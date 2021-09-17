@@ -71,6 +71,11 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings?)  : 
 
     private fun encodeOne(message: Message): RawMessage {
 
+        checkNotNull(message.getString("json")) {"There no json inside encoding message: $message"}
+
+        val xmlString = U.jsonToXml(message.getString("json"))
+        U.jsonToXml(message.getString("json"), U.Mode.FORCE_ATTRIBUTE_USAGE_AND_DEFINE_ROOT_NAME)
+
 //        val jsonMapper: ObjectMapper = JsonMapper()
 //        val jsonNode: ObjectNode = jsonMapper.readTree(message.getString("json")) as ObjectNode
 //        xmlMapper.configure(SerializationFeature.INDENT_OUTPUT, true)
@@ -100,7 +105,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings?)  : 
             metadataBuilder.protocol = XmlPipelineCodecFactory.PROTOCOL
             metadataBuilder.id = message.metadata.id
             metadataBuilder.timestamp = message.metadata.timestamp
-            body = ByteString.copyFrom("xmlString", xmlCharset)
+            body = ByteString.copyFrom(xmlString, xmlCharset)
         }.build()
     }
 

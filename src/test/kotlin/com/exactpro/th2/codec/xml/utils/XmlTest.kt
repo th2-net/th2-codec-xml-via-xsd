@@ -18,7 +18,7 @@ abstract class XmlTest {
         assertEquals(1, group.messagesCount)
 
         assertEquals(
-            "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n$xml\n",
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n$xml",
             group.messagesList[0].rawMessage.body.toStringUtf8()
         )
     }

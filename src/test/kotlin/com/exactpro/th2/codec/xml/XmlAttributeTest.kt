@@ -125,12 +125,29 @@ class XmlAttributeTest : XmlTest() {
     @Test
     fun `test encode attrs in different place`() {
         val xml = """
-            <attributes defaultMsgAttrA="123" msgAttrA="45" msgAttrB="67">
-                <commonWithAttrs commonAttrA="54" commonAttrB="76">abc</commonWithAttrs>
-                <withAttrs fieldAttrA="10" fieldAttrB="30">def</withAttrs>
-            </attributes>
+        <Attributes defaultMsgAttrA="123" msgAttrA="45" msgAttrB="67">
+          <commonWithAttrs commonAttrA="54" commonAttrB="76">abc</commonWithAttrs>
+          <withAttrs defaultFieldAttrA="456" fieldAttrA="10" fieldAttrB="30">def</withAttrs>
+        </Attributes>
         """.trimIndent()
-        val json = "{\"defaultMsgAttrA\":\"123\",\"msgAttrA\":\"45\",\"msgAttrB\":\"67\",\"commonWithAttrs\":{\"commonAttrA\":\"54\",\"commonAttrB\":\"76\",\"\":\"abc\"},\"withAttrs\":{\"defaultFieldAttrA\":\"456\",\"fieldAttrA\":\"10\",\"fieldAttrB\":\"30\",\"\":\"def\"}}"
+        val json = """{
+  "Attributes": {
+    "-defaultMsgAttrA": "123",
+    "-msgAttrA": "45",
+    "-msgAttrB": "67",
+    "commonWithAttrs": {
+      "-commonAttrA": "54",
+      "-commonAttrB": "76",
+      "#text": "abc"
+    },
+    "withAttrs": {
+      "-defaultFieldAttrA": "456",
+      "-fieldAttrA": "10",
+      "-fieldAttrB": "30",
+      "#text": "def"
+    }
+  }
+}"""
         val msg = Message.newBuilder().apply {
             messageType = "Attributes"
             addField("json", json)
