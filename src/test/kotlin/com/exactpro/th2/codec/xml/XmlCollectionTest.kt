@@ -1,7 +1,5 @@
 package com.exactpro.th2.codec.xml
 
-import com.exactpro.sf.common.messages.structures.IDictionaryStructure
-import com.exactpro.sf.common.messages.structures.loaders.XmlDictionaryStructureLoader
 import com.exactpro.th2.codec.xml.utils.assertEqualsMessages
 import com.exactpro.th2.codec.xml.utils.createRawMessage
 import com.exactpro.th2.codec.xml.utils.parsedMessage
@@ -28,7 +26,22 @@ class XmlCollectionTest {
                 </collectionMessage>
             </TestCollection>
         """.trimIndent()
-        val json = "{\"collection\":[\"1234\",\"5678\"],\"collectionMessage\":[{\"field0\":\"1011\"},{\"field0\":\"1213\"}]}"
+        val json = """{
+  "TestCollection": {
+    "collection": [
+      "1234",
+      "5678"
+    ],
+    "collectionMessage": [
+      {
+        "field0": "1011"
+      },
+      {
+        "field0": "1213"
+      }
+    ]
+  }
+}"""
         val msg = parsedMessage("TestCollection").addFields(
             "json", json,
         )
@@ -50,7 +63,8 @@ class XmlCollectionTest {
                 </collectionMessage>
             </TestCollection>
         """.trimIndent()
-        val json = "{\"collection\":[\"1234\",\"5678\"],\"collectionMessage\":[{\"field0\":\"1011\"},{\"field0\":\"1213\"}]}"
+        val json =
+            "{\"collection\":[\"1234\",\"5678\"],\"collectionMessage\":[{\"field0\":\"1011\"},{\"field0\":\"1213\"}]}"
         val msg = parsedMessage("TestCollection").addFields(
             "json", json,
         )
@@ -59,7 +73,8 @@ class XmlCollectionTest {
     }
 
     private fun checkEncode(xml: String, message: Message.Builder) {
-        val group = codec.encode(MessageGroup.newBuilder().addMessages(AnyMessage.newBuilder().setMessage(message)).build())
+        val group =
+            codec.encode(MessageGroup.newBuilder().addMessages(AnyMessage.newBuilder().setMessage(message)).build())
         assertEquals(1, group.messagesCount)
 
         assertEquals(
@@ -76,9 +91,6 @@ class XmlCollectionTest {
     }
 
     companion object {
-        private val dictionary: IDictionaryStructure =
-            XmlDictionaryStructureLoader().load(Thread.currentThread().contextClassLoader.getResourceAsStream("test_dictionary.xml"))
         val codec = XmlPipelineCodec(null)
-
     }
 }

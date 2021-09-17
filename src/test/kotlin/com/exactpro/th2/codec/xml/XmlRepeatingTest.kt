@@ -17,7 +17,24 @@ class XmlRepeatingTest : XmlTest() {
             </SimpleRepeating>
         """.trimIndent()
 
-        val json = "{\"user\":[{\"id\":\"1\",\"\":\"admin\"},{\"id\":\"2\",\"\":\"user\"},{\"id\":\"3\",\"\":\"guest\"}]}"
+        val json = """{
+  "SimpleRepeating": {
+    "user": [
+      {
+        "-id": "1",
+        "#text": "admin"
+      },
+      {
+        "-id": "2",
+        "#text": "user"
+      },
+      {
+        "-id": "3",
+        "#text": "guest"
+      }
+    ]
+  }
+}"""
         val msg = parsedMessage("SimpleRepeating").addFields(
             "json", json,
         )
@@ -97,7 +114,86 @@ class XmlRepeatingTest : XmlTest() {
             </RepeatingGroup>
         """.trimIndent()
 
-        val json = "{\"groupA\":[{\"B\":{\"C\":{\"D\":{\"groupE\":[{\"groupF\":{\"G\":{\"H\":\"1\"}}},{\"groupF\":[{\"G\":{\"H\":\"2\"}},{\"G\":{\"H\":\"3\"}}]}]}}}},{\"B\":{\"C\":{\"D\":{\"groupE\":[{\"groupF\":{\"G\":{\"H\":\"4\"}}},{\"groupF\":{\"G\":{\"H\":\"5\"}}},{\"groupF\":[{\"G\":{\"H\":\"6\"}},{\"G\":{\"H\":\"7\"}},{\"G\":{\"H\":\"8\"}}]}]}}}}]}"
+        val json = """{
+  "RepeatingGroup": {
+    "groupA": [
+      {
+        "B": {
+          "C": {
+            "D": {
+              "groupE": [
+                {
+                  "groupF": {
+                    "G": {
+                      "H": "1"
+                    }
+                  }
+                },
+                {
+                  "groupF": [
+                    {
+                      "G": {
+                        "H": "2"
+                      }
+                    },
+                    {
+                      "G": {
+                        "H": "3"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "B": {
+          "C": {
+            "D": {
+              "groupE": [
+                {
+                  "groupF": {
+                    "G": {
+                      "H": "4"
+                    }
+                  }
+                },
+                {
+                  "groupF": {
+                    "G": {
+                      "H": "5"
+                    }
+                  }
+                },
+                {
+                  "groupF": [
+                    {
+                      "G": {
+                        "H": "6"
+                      }
+                    },
+                    {
+                      "G": {
+                        "H": "7"
+                      }
+                    },
+                    {
+                      "G": {
+                        "H": "8"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    ]
+  }
+}"""
         val msg = parsedMessage("RepeatingGroup").addFields(
             "json", json,
         )

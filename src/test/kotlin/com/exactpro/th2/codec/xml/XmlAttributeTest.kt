@@ -37,7 +37,47 @@ class XmlAttributeTest : XmlTest() {
             </TestAttrMessage>
         """.trimIndent()
 
-        val json = "{\"b\":[{\"c\":{\"d\":{\"e\":{\"f\":\"123\",\"g\":\"1\",\"\":\"asd\"}}}},{\"c\":{\"d\":{\"e\":{\"f\":\"456\",\"g\":\"2\",\"n\":\"48\",\"\":\"fgh\"},\"h\":\"A\"}}},{\"c\":{\"d\":{\"e\":{\"f\":\"789\",\"g\":\"3\",\"\":\"fgh\"}}}}]}"
+        val json = """{
+  "TestAttrMessage": {
+    "b": [
+      {
+        "c": {
+          "d": {
+            "e": {
+              "-f": "123",
+              "-g": "1",
+              "#text": "asd"
+            }
+          }
+        }
+      },
+      {
+        "c": {
+          "d": {
+            "e": {
+              "-f": "456",
+              "-g": "2",
+              "-n": "48",
+              "#text": "fgh"
+            },
+            "h": "A"
+          }
+        }
+      },
+      {
+        "c": {
+          "d": {
+            "e": {
+              "-f": "789",
+              "-g": "3",
+              "#text": "fgh"
+            }
+          }
+        }
+      }
+    ]
+  }
+}"""
         val msg = parsedMessage("TestAttrMessage").addFields(
             "json", json,
         )
@@ -55,7 +95,24 @@ class XmlAttributeTest : XmlTest() {
                 <withAttrs defaultFieldAttrA="456" fieldAttrA="10" fieldAttrB="30">def</withAttrs>
             </Attributes>
         """.trimIndent()
-        val json = "{\"Attributes\":{\"defaultMsgAttrA\":\"123\",\"msgAttrA\":\"45\",\"msgAttrB\":\"67\",\"commonWithAttrs\":{\"commonAttrA\":\"54\",\"commonAttrB\":\"76\",\"\":\"abc\"},\"withAttrs\":{\"defaultFieldAttrA\":\"456\",\"fieldAttrA\":\"10\",\"fieldAttrB\":\"30\",\"\":\"def\"}}}"
+        val json = """{
+  "Attributes": {
+    "-defaultMsgAttrA": "123",
+    "-msgAttrA": "45",
+    "-msgAttrB": "67",
+    "commonWithAttrs": {
+      "-commonAttrA": "54",
+      "-commonAttrB": "76",
+      "#text": "abc"
+    },
+    "withAttrs": {
+      "-defaultFieldAttrA": "456",
+      "-fieldAttrA": "10",
+      "-fieldAttrB": "30",
+      "#text": "def"
+    }
+  }
+}"""
         val msg = parsedMessage("Attributes").addFields(
             "json", json,
         )

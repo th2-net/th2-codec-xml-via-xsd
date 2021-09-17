@@ -16,9 +16,7 @@ package com.exactpro.th2.codec.xml
 
 import com.exactpro.th2.codec.xml.utils.XmlTest
 import com.exactpro.th2.codec.xml.utils.parsedMessage
-import com.exactpro.th2.common.message.addField
 import com.exactpro.th2.common.message.addFields
-import com.exactpro.th2.common.message.message
 import org.junit.jupiter.api.Test
 
 class XmlPipelineCodecTest : XmlTest() {
@@ -38,7 +36,18 @@ class XmlPipelineCodecTest : XmlTest() {
             </CommonFieldsA>
         """
 
-        val json = "{\"f\":\"123\",\"abc\":{\"ab\":{\"a\":\"345\",\"b\":\"678\"},\"c\":\"90\"}}"
+        val json = """{
+  "CommonFieldsA": {
+    "f": "123",
+    "abc": {
+      "ab": {
+        "a": "345",
+        "b": "678"
+      },
+      "c": "90"
+    }
+  }
+}"""
         val msg = parsedMessage("CommonFieldsA").addFields(
             "json", json,
         )

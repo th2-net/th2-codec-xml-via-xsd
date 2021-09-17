@@ -35,9 +35,6 @@ import com.fasterxml.jackson.databind.deser.std.JsonNodeDeserializer
 import com.fasterxml.jackson.databind.json.JsonMapper
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.databind.node.ObjectNode
-import com.fasterxml.jackson.dataformat.xml.XmlMapper
-import com.fasterxml.jackson.dataformat.xml.deser.FromXmlParser
-import com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator
 import com.google.protobuf.ByteString
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -49,6 +46,8 @@ import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.parsers.ParserConfigurationException
 import javax.xml.xpath.XPath
 import javax.xml.xpath.XPathFactory
+import com.github.underscore.lodash.U
+
 
 
 open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings?)  : IPipelineCodec {
@@ -72,27 +71,27 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings?)  : 
 
     private fun encodeOne(message: Message): RawMessage {
 
-        val jsonMapper: ObjectMapper = JsonMapper()
-        val jsonNode: ObjectNode = jsonMapper.readTree(message.getString("json")) as ObjectNode
-        xmlMapper.configure(SerializationFeature.INDENT_OUTPUT, true)
-
-        val XML_WRITER_WRAP: ObjectWriter = xmlMapper.writer()
-            .with(ToXmlGenerator.Feature.WRITE_XML_DECLARATION)
-            .without(ToXmlGenerator.Feature.UNWRAP_ROOT_OBJECT_NODE)
-            .with(ToXmlGenerator.Feature.WRITE_XML_1_1)
-        val XML_WRITER_UNWRAP: ObjectWriter = xmlMapper.writer()
-            .with(ToXmlGenerator.Feature.WRITE_XML_DECLARATION)
-            .with(ToXmlGenerator.Feature.UNWRAP_ROOT_OBJECT_NODE)
-            .with(ToXmlGenerator.Feature.WRITE_XML_1_1)
-
-        val xml: ObjectNode = xmlMapper.createObjectNode()
-        val child = xml.putObject("root")
-
-
-        val xmlString = XML_WRITER_UNWRAP.writeValueAsString(jsonNode)
-        LOGGER.info(xmlString)
-
-        LOGGER.info(DOCUMENT_BUILDER.get().parse(xmlString).toString())
+//        val jsonMapper: ObjectMapper = JsonMapper()
+//        val jsonNode: ObjectNode = jsonMapper.readTree(message.getString("json")) as ObjectNode
+//        xmlMapper.configure(SerializationFeature.INDENT_OUTPUT, true)
+//
+//        val XML_WRITER_WRAP: ObjectWriter = xmlMapper.writer()
+//            .with(ToXmlGenerator.Feature.WRITE_XML_DECLARATION)
+//            .without(ToXmlGenerator.Feature.UNWRAP_ROOT_OBJECT_NODE)
+//            .with(ToXmlGenerator.Feature.WRITE_XML_1_1)
+//        val XML_WRITER_UNWRAP: ObjectWriter = xmlMapper.writer()
+//            .with(ToXmlGenerator.Feature.WRITE_XML_DECLARATION)
+//            .with(ToXmlGenerator.Feature.UNWRAP_ROOT_OBJECT_NODE)
+//            .with(ToXmlGenerator.Feature.WRITE_XML_1_1)
+//
+//        val xml: ObjectNode = xmlMapper.createObjectNode()
+//        val child = xml.putObject("root")
+//
+//
+//        val xmlString = XML_WRITER_UNWRAP.writeValueAsString(jsonNode)
+//        LOGGER.info(xmlString)
+//
+//        LOGGER.info(DOCUMENT_BUILDER.get().parse(xmlString).toString())
 
 
         return RawMessage.newBuilder().apply {
@@ -101,7 +100,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings?)  : 
             metadataBuilder.protocol = XmlPipelineCodecFactory.PROTOCOL
             metadataBuilder.id = message.metadata.id
             metadataBuilder.timestamp = message.metadata.timestamp
-            body = ByteString.copyFrom(xmlString, xmlCharset)
+            body = ByteString.copyFrom("xmlString", xmlCharset)
         }.build()
     }
 
@@ -130,16 +129,16 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings?)  : 
     private fun decodeOne(rawMessage: RawMessage): Message {
         try {
             val messageBuilder = Message.newBuilder()
-            val xmlRaw = rawMessage.body.toByteArray()
+            val xmlString = rawMessage.body.toStringUtf8()
 
-            val xmlNode: ObjectNode = xmlMapper.readTree(xmlRaw) as ObjectNode
+            val jsonString = U.xmlToJson(xmlString)
 
-            check(xmlNode.size()==1) {"There more then one root messages after xml to Node process"}
+            val jsonNode: JsonNode = jsonMapper.readTree(jsonString)
 
-            val jsonMapper = JsonMapper()
-            val json = jsonMapper.writeValueAsString(xmlNode)
+            check(jsonNode.size()==1) {"There more then one root messages after xml to Node process"}
+
             return messageBuilder.apply {
-                messageType = xmlNode.fieldNames().next()
+                messageType = jsonNode.fieldNames().next()
                 parentEventId = rawMessage.parentEventId
                 metadataBuilder.also { msgMetadata ->
                     rawMessage.metadata.also { rawMetadata ->
@@ -149,7 +148,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings?)  : 
                         msgMetadata.putAllProperties(rawMetadata.propertiesMap)
                     }
                 }
-                addField("json", json)
+                addField("json", jsonString)
             }.build()
         } catch (e: Exception) {
             when (e) {
@@ -166,21 +165,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings?)  : 
     companion object {
         private val LOGGER: Logger = LoggerFactory.getLogger(XmlPipelineCodec::class.java)
 
-        private val xmlMapper = XmlMapper().apply {
-//            configure(MapperFeature)
-            registerModule(
-                SimpleModule().addDeserializer<JsonNode?>(
-                    JsonNode::class.java,
-                    object : JsonNodeDeserializer() {
-                        @Throws(IOException::class)
-                        override fun deserialize(p: JsonParser, ctxt: DeserializationContext): JsonNode {
-                            val rootName: String = (p as FromXmlParser).staxReader.localName
-                            return ctxt.nodeFactory.objectNode().set(rootName, super.deserialize(p, ctxt))
-                        }
-                    })
-            )
-        }
-
+        private val jsonMapper = JsonMapper()
 
         private val X_PATH: ThreadLocal<XPath> = ThreadLocal.withInitial {
             XPathFactory.newInstance().newXPath()

@@ -16,7 +16,7 @@
 plugins {
     id 'com.palantir.docker' version '0.25.0'
     id 'org.jetbrains.kotlin.jvm' version "${kotlin_version}"
-    id 'com.github.harbby.gradle.serviceloader' version '1.1.5'
+    id 'com.github.harbby.gradle.serviceloader' version '1.1.8'
     id 'application'
 }
 
@@ -84,8 +84,8 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-reflect:${kotlin_version}"
 
     implementation 'com.fasterxml.jackson.core:jackson-core:2.12.5'
-    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.13.0-rc2'
-
+    implementation 'com.github.javadev:underscore:1.69'
+    
     testImplementation "org.jetbrains.kotlin:kotlin-test-junit5:${kotlin_version}"
     testImplementation "org.junit.jupiter:junit-jupiter-api:${junitVersion}"
     testImplementation "org.junit.jupiter:junit-jupiter-params:${junitVersion}"
