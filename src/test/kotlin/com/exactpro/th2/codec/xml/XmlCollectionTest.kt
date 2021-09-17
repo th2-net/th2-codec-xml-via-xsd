@@ -27,22 +27,7 @@ class XmlCollectionTest : XmlTest() {
                 </collectionMessage>
             </TestCollection>
         """.trimIndent()
-        val json = """{
-  "TestCollection": {
-    "collection": [
-      "1234",
-      "5678"
-    ],
-    "collectionMessage": [
-      {
-        "field0": "1011"
-      },
-      {
-        "field0": "1213"
-      }
-    ]
-  }
-}"""
+        val json = """{"TestCollection":{"collection":["1234","5678"],"collectionMessage":[{"field0":"1011"},{"field0":"1213"}]}}"""
         val msg = parsedMessage("TestCollection").addFields(
             "json", json,
         )
@@ -64,22 +49,7 @@ class XmlCollectionTest : XmlTest() {
               </collectionMessage>
             </TestCollection>
         """.trimIndent()
-        val json ="""{
-          "TestCollection": {
-            "collection": [
-              "1234",
-              "5678"
-            ],
-            "collectionMessage": [
-              {
-                "field0": "1011"
-              },
-              {
-                "field0": "1213"
-              }
-            ]
-          }
-        }"""
+        val json ="""{"TestCollection":{"collection":["1234","5678"],"collectionMessage":[{"field0":"1011"},{"field0":"1213"}]}}"""
         val msg = parsedMessage("TestCollection").addFields(
             "json", json,
         )

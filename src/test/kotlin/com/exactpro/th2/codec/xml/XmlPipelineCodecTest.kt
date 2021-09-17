@@ -36,18 +36,7 @@ class XmlPipelineCodecTest : XmlTest() {
             </CommonFieldsA>
         """
 
-        val json = """{
-  "CommonFieldsA": {
-    "f": "123",
-    "abc": {
-      "ab": {
-        "a": "345",
-        "b": "678"
-      },
-      "c": "90"
-    }
-  }
-}"""
+        val json = """{"CommonFieldsA":{"f":"123","abc":{"ab":{"a":"345","b":"678"},"c":"90"}}}"""
         val msg = parsedMessage("CommonFieldsA").addFields(
             "json", json,
         )

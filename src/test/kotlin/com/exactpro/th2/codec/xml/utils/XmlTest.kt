@@ -4,12 +4,13 @@ import com.exactpro.sf.common.messages.structures.IDictionaryStructure
 import com.exactpro.sf.common.messages.structures.loaders.XmlDictionaryStructureLoader
 import com.exactpro.th2.codec.api.IPipelineCodec
 import com.exactpro.th2.codec.xml.XmlPipelineCodec
+import com.exactpro.th2.codec.xml.XmlPipelineCodecSettings
 import com.exactpro.th2.common.grpc.AnyMessage
 import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.MessageGroup
 import kotlin.test.assertEquals
 
-abstract class XmlTest {
+abstract class XmlTest(customRoot: String? = null) {
 
     private val codec: IPipelineCodec
 
@@ -31,6 +32,6 @@ abstract class XmlTest {
     }
 
     init {
-        codec = XmlPipelineCodec(null)
+        codec = XmlPipelineCodec(XmlPipelineCodecSettings(customRoot, customRoot?.run { "/$customRoot/type" }))
     }
 }

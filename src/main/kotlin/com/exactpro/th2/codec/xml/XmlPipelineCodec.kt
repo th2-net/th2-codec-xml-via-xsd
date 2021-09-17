@@ -25,16 +25,12 @@ import com.exactpro.th2.common.message.addField
 import com.exactpro.th2.common.message.getString
 import com.exactpro.th2.common.message.messageType
 import com.exactpro.th2.common.message.toJson
-import com.fasterxml.jackson.core.JsonParser
-import com.fasterxml.jackson.databind.DeserializationContext
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.ObjectWriter
-import com.fasterxml.jackson.databind.SerializationFeature
-import com.fasterxml.jackson.databind.deser.std.JsonNodeDeserializer
 import com.fasterxml.jackson.databind.json.JsonMapper
-import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.databind.node.ObjectNode
+import com.github.underscore.lodash.Json
+import com.github.underscore.lodash.U
 import com.google.protobuf.ByteString
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -46,11 +42,9 @@ import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.parsers.ParserConfigurationException
 import javax.xml.xpath.XPath
 import javax.xml.xpath.XPathFactory
-import com.github.underscore.lodash.U
 
 
-
-open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings?)  : IPipelineCodec {
+open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings)  : IPipelineCodec {
 
     private var xmlCharset: Charset = Charsets.UTF_8
 
@@ -71,33 +65,16 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings?)  : 
 
     private fun encodeOne(message: Message): RawMessage {
 
-        checkNotNull(message.getString("json")) {"There no json inside encoding message: $message"}
+        val jsonField = checkNotNull(message.getString("json")) {"There no json inside encoding message: $message"}
 
-        val xmlString = U.jsonToXml(message.getString("json"))
-        U.jsonToXml(message.getString("json"), U.Mode.FORCE_ATTRIBUTE_USAGE_AND_DEFINE_ROOT_NAME)
+        val json: String = settings.rootName?.let {
+            val jsonMapper: ObjectMapper = JsonMapper()
+            jsonMapper.readTree(jsonField).apply {
+                renameField(message.messageType, it)
+            }.toString()
+        } ?: jsonField
 
-//        val jsonMapper: ObjectMapper = JsonMapper()
-//        val jsonNode: ObjectNode = jsonMapper.readTree(message.getString("json")) as ObjectNode
-//        xmlMapper.configure(SerializationFeature.INDENT_OUTPUT, true)
-//
-//        val XML_WRITER_WRAP: ObjectWriter = xmlMapper.writer()
-//            .with(ToXmlGenerator.Feature.WRITE_XML_DECLARATION)
-//            .without(ToXmlGenerator.Feature.UNWRAP_ROOT_OBJECT_NODE)
-//            .with(ToXmlGenerator.Feature.WRITE_XML_1_1)
-//        val XML_WRITER_UNWRAP: ObjectWriter = xmlMapper.writer()
-//            .with(ToXmlGenerator.Feature.WRITE_XML_DECLARATION)
-//            .with(ToXmlGenerator.Feature.UNWRAP_ROOT_OBJECT_NODE)
-//            .with(ToXmlGenerator.Feature.WRITE_XML_1_1)
-//
-//        val xml: ObjectNode = xmlMapper.createObjectNode()
-//        val child = xml.putObject("root")
-//
-//
-//        val xmlString = XML_WRITER_UNWRAP.writeValueAsString(jsonNode)
-//        LOGGER.info(xmlString)
-//
-//        LOGGER.info(DOCUMENT_BUILDER.get().parse(xmlString).toString())
-
+        val xmlString = U.jsonToXml(json)
 
         return RawMessage.newBuilder().apply {
             parentEventId = message.parentEventId
@@ -136,14 +113,22 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings?)  : 
             val messageBuilder = Message.newBuilder()
             val xmlString = rawMessage.body.toStringUtf8()
 
-            val jsonString = U.xmlToJson(xmlString)
+            var jsonString = U.xmlToJson(xmlString, Json.JsonStringBuilder.Step.COMPACT, null )
 
             val jsonNode: JsonNode = jsonMapper.readTree(jsonString)
+
+            val msgType: String = settings.jsonPointer?.let {
+                val typeNode = jsonNode.at(it)
+                val resultType = typeNode.asText()
+                jsonNode.renameField(jsonNode.fieldNames().next(), resultType)
+                jsonString = jsonNode.toString()
+                resultType
+            } ?: jsonNode.fieldNames().next()
 
             check(jsonNode.size()==1) {"There more then one root messages after xml to Node process"}
 
             return messageBuilder.apply {
-                messageType = jsonNode.fieldNames().next()
+                messageType = msgType
                 parentEventId = rawMessage.parentEventId
                 metadataBuilder.also { msgMetadata ->
                     rawMessage.metadata.also { rawMetadata ->
@@ -166,6 +151,13 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings?)  : 
         }
     }
 
+    private fun JsonNode.renameField(oldName: String, newName: String) : JsonNode {
+        (this as ObjectNode).apply {
+            set<JsonNode>(newName, get(oldName))
+            remove(oldName)
+        }
+        return this
+    }
 
     companion object {
         private val LOGGER: Logger = LoggerFactory.getLogger(XmlPipelineCodec::class.java)
