@@ -26,7 +26,6 @@ import com.exactpro.th2.common.message.getString
 import com.exactpro.th2.common.message.messageType
 import com.exactpro.th2.common.message.toJson
 import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.json.JsonMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.github.underscore.lodash.Json
@@ -67,14 +66,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings)  : I
 
         val jsonField = checkNotNull(message.getString("json")) {"There no json inside encoding message: $message"}
 
-        val json: String = settings.rootName?.let {
-            val jsonMapper: ObjectMapper = JsonMapper()
-            jsonMapper.readTree(jsonField).apply {
-                renameField(message.messageType, it)
-            }.toString()
-        } ?: jsonField
-
-        val xmlString = U.jsonToXml(json)
+        val xmlString = U.jsonToXml(jsonField)
 
         return RawMessage.newBuilder().apply {
             parentEventId = message.parentEventId
@@ -117,12 +109,11 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings)  : I
 
             val jsonNode: JsonNode = jsonMapper.readTree(jsonString)
 
-            val msgType: String = settings.jsonPointer?.let {
+            check(jsonNode.size()==1) {"There was more than one root node in processed xml, result json have ${jsonNode.size()}"}
+
+            val msgType: String = settings.typePointer?.let {
                 val typeNode = jsonNode.at(it)
-                val resultType = typeNode.asText()
-                jsonNode.renameField(jsonNode.fieldNames().next(), resultType)
-                jsonString = jsonNode.toString()
-                resultType
+                typeNode.asText()
             } ?: jsonNode.fieldNames().next()
 
             check(jsonNode.size()==1) {"There more then one root messages after xml to Node process"}

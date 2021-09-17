@@ -10,7 +10,7 @@ import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.MessageGroup
 import kotlin.test.assertEquals
 
-abstract class XmlTest(customRoot: String? = null) {
+abstract class XmlTest(jsonPathToType: String? = null) {
 
     private val codec: IPipelineCodec
 
@@ -32,6 +32,6 @@ abstract class XmlTest(customRoot: String? = null) {
     }
 
     init {
-        codec = XmlPipelineCodec(XmlPipelineCodecSettings(customRoot, customRoot?.run { "/$customRoot/type" }))
+        codec = XmlPipelineCodec(XmlPipelineCodecSettings(jsonPathToType))
     }
 }
