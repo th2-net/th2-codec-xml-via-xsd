@@ -22,9 +22,9 @@ import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.MessageGroup
 import com.exactpro.th2.common.grpc.RawMessage
 import com.exactpro.th2.common.message.addField
-import com.exactpro.th2.common.message.getString
 import com.exactpro.th2.common.message.messageType
 import com.exactpro.th2.common.message.toJson
+import com.exactpro.th2.converter.Converter
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.json.JsonMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
@@ -64,9 +64,10 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings)  : I
 
     private fun encodeOne(message: Message): RawMessage {
 
-        val jsonField = checkNotNull(message.getString("json")) {"There no json inside encoding message: $message"}
+        //val jsonField = checkNotNull(message.getString("json")) {"There no json inside encoding message: $message"}
+        val json = Converter.convertProtoToJson(message)
 
-        val xmlString = U.jsonToXml(jsonField)
+        val xmlString = U.jsonToXml(json)
 
         return RawMessage.newBuilder().apply {
             parentEventId = message.parentEventId
@@ -109,6 +110,8 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings)  : I
 
             val jsonNode: JsonNode = jsonMapper.readTree(jsonString)
 
+            val proto = Converter.convertJsonToProto(jsonNode)
+
             check(jsonNode.size()==1) {"There was more than one root node in processed xml, result json have ${jsonNode.size()}"}
 
             val msgType: String = settings.typePointer?.let {
@@ -118,7 +121,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings)  : I
 
             check(jsonNode.size()==1) {"There more then one root messages after xml to Node process"}
 
-            return messageBuilder.apply {
+            /*return messageBuilder.apply {
                 messageType = msgType
                 parentEventId = rawMessage.parentEventId
                 metadataBuilder.also { msgMetadata ->
@@ -130,7 +133,9 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings)  : I
                     }
                 }
                 addField("json", jsonString)
-            }.build()
+            }.build()*/
+
+            return proto
         } catch (e: Exception) {
             when (e) {
                 is IOException,
