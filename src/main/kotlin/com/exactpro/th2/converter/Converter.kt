@@ -52,22 +52,13 @@ class Converter {
             }
         }
 
-        fun convertJsonToProto(node: JsonNode) : Message {
-            return jsonToValue(node).getMessage()
-                ?: throw IllegalArgumentException("JsonNode $node does not contain a message")
-        }
+        fun convertJsonToProto(node: JsonNode) : Message = jsonToValue(node).getMessage()
+            ?: throw IllegalArgumentException("JsonNode $node does not contain a message")
 
-        fun convertProtoToJson(message: Message) : String {
-            val mapper = ObjectMapper()
-            val node = mapper.createObjectNode()
-
-            node.apply {
-                message.allFields.forEach {
-                    put(it.key.jsonName, it.value.toString())
-                }
+        fun convertProtoToJson(message: Message) : String = ObjectMapper().createObjectNode().apply {
+            message.allFields.forEach {
+                put(it.key.jsonName, it.value.toString())
             }
-
-            return node.toString()
-        }
+        }.toString()
     }
 }
