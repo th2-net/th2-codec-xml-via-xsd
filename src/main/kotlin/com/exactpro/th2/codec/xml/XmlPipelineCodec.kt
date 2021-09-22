@@ -110,8 +110,6 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings)  : I
 
             val jsonNode: JsonNode = jsonMapper.readTree(jsonString)
 
-            val proto = Converter.convertJsonToProto(jsonNode)
-
             check(jsonNode.size()==1) {"There was more than one root node in processed xml, result json have ${jsonNode.size()}"}
 
             val msgType: String = settings.typePointer?.let {
@@ -120,6 +118,8 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings)  : I
             } ?: jsonNode.fieldNames().next()
 
             check(jsonNode.size()==1) {"There more then one root messages after xml to Node process"}
+
+            val proto = Converter.convertJsonToProto(jsonNode, msgType, rawMessage)
 
             /*return messageBuilder.apply {
                 messageType = msgType
