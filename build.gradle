@@ -132,4 +132,5 @@ serviceLoader {
 
 test {
     useJUnitPlatform()
+    exclude 'com/exactpro/th2/codec/xml'
 }
