@@ -64,10 +64,9 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings)  : I
 
     private fun encodeOne(message: Message): RawMessage {
 
-        //val jsonField = checkNotNull(message.getString("json")) {"There no json inside encoding message: $message"}
         val json = Converter.convertProtoToJson(message)
 
-        val xmlString = U.jsonToXml(json)
+        val xmlString = U.jsonToXml(json, message.messageType)
 
         return RawMessage.newBuilder().apply {
             parentEventId = message.parentEventId
