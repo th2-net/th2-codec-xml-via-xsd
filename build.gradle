@@ -22,7 +22,7 @@ plugins {
 
 ext {
     sharedDir = file("${project.rootDir}/shared")
-    sailfishVersion = '3.2.1638'
+    sailfishVersion = '3.2.1684'
 }
 
 group = 'com.exactpro.th2'
@@ -32,7 +32,7 @@ sourceCompatibility = 11
 targetCompatibility = 11
 
 ext {
-    junitVersion        = '5.7.2'
+    junitVersion        = '5.8.1'
 }
 
 repositories {
@@ -68,9 +68,9 @@ jar {
 
 dependencies {
     api platform('com.exactpro.th2:bom:3.0.0')
-    implementation 'com.exactpro.th2:common:3.25.0'
+    implementation 'com.exactpro.th2:common:3.26.0'
     implementation 'com.exactpro.th2:codec:4.1.1'
-    implementation 'com.exactpro.th2:sailfish-utils:3.7.0'
+    implementation 'com.exactpro.th2:sailfish-utils:3.9.0'
 
     implementation "com.exactpro.sf:sailfish-core:${sailfishVersion}"
 
@@ -132,5 +132,5 @@ serviceLoader {
 
 test {
     useJUnitPlatform()
-    exclude 'com/exactpro/th2/codec/xml'
+    //exclude 'com/exactpro/th2/codec/xml'
 }

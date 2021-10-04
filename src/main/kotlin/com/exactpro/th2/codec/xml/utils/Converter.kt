@@ -1,4 +1,4 @@
-package com.exactpro.th2.converter
+package com.exactpro.th2.codec.xml.utils
 
 import com.exactpro.th2.codec.xml.XmlPipelineCodecFactory
 import com.exactpro.th2.common.grpc.ListValue
@@ -25,7 +25,7 @@ class Converter {
                         messageValueBuilder.apply {
                             messageType = name
                             node.fieldNames().forEach {
-                                putFields(it, jsonToValue(node[it], it))
+                                putFields(it, jsonToValue(node[it]))
                             }
                         }
                     }.build()
@@ -33,30 +33,19 @@ class Converter {
                 is ArrayNode -> {
                     return Value.newBuilder().apply {
                         messageValueBuilder.apply {
-                            messageType = name
-                            listValue = listValueBuilder.addAllValues(node.toListValue().valuesList).build()
-
+//                            messageType = name
+//                            listValue = listValueBuilder.addAllValues(node.toListValue().valuesList).build()
                             val listValueBuilder = ListValue.newBuilder()
-
-                            node.toMutableList().forEach {
-                                val textValue = it.textValue()
-
-                                if (textValue != null) {
-                                    listValue =
-                                        listValueBuilder.
-                                        addValues(Value.newBuilder()
-                                            .setSimpleValue(textValue)).build()
-                                }
+                            node.forEach {
+                                listValueBuilder.addValues(jsonToValue(it))
                             }
+                            listValue = listValueBuilder.build()
                         }
                     }.build()
                 }
                 is ValueNode -> {
                     return Value.newBuilder().apply {
-                        messageValueBuilder.apply {
-                            messageType = name
-                            this[name] = node.textValue()
-                        }
+                        simpleValue = node.textValue()
                     }.build()
                 }
                 else -> error("Unknown node type ${node::class.java}")

@@ -1,13 +1,17 @@
 package com.exactpro.th2.codec.xml.utils
 
-import com.exactpro.sf.common.messages.structures.IDictionaryStructure
-import com.exactpro.sf.common.messages.structures.loaders.XmlDictionaryStructureLoader
 import com.exactpro.th2.codec.api.IPipelineCodec
 import com.exactpro.th2.codec.xml.XmlPipelineCodec
+import com.exactpro.th2.codec.xml.XmlPipelineCodecFactory
 import com.exactpro.th2.codec.xml.XmlPipelineCodecSettings
 import com.exactpro.th2.common.grpc.AnyMessage
 import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.MessageGroup
+import com.google.protobuf.TextFormat
+import mu.KotlinLogging
+import org.slf4j.Logger
+import java.io.FileInputStream
+import java.util.zip.ZipInputStream
 import kotlin.test.assertEquals
 
 abstract class XmlTest(jsonPathToType: String? = null) {
@@ -17,6 +21,8 @@ abstract class XmlTest(jsonPathToType: String? = null) {
     protected fun checkEncode(xml: String, message: Message.Builder) {
         val group = codec.encode(MessageGroup.newBuilder().addMessages(AnyMessage.newBuilder().setMessage(message)).build())
         assertEquals(1, group.messagesCount)
+
+        LOGGER.info("ENCODE_RESULT: ${TextFormat.shortDebugString(group)}")
 
         assertEquals(
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n$xml",
@@ -28,10 +34,18 @@ abstract class XmlTest(jsonPathToType: String? = null) {
         val group = codec.decode(createRawMessage(xml))
         assertEquals(1, group.messagesCount)
 
+        LOGGER.info("DECODE_RESULT: ${TextFormat.shortDebugString(group)}")
+
         assertEqualsMessages(message.build(), group.messagesList[0].message, true)
     }
 
     init {
-        codec = XmlPipelineCodec(XmlPipelineCodecSettings(jsonPathToType))
+        val stream = Thread.currentThread().contextClassLoader.getResourceAsStream("XSDset.zip")
+        val xsdMap = XmlPipelineCodecFactory.bufferDictionary(stream)
+        codec = XmlPipelineCodec(XmlPipelineCodecSettings(jsonPathToType), xsdMap)
+    }
+
+    companion object {
+        private val LOGGER: Logger = KotlinLogging.logger { }
     }
 }

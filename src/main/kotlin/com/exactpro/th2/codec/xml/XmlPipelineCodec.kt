@@ -21,10 +21,9 @@ import com.exactpro.th2.common.grpc.AnyMessage
 import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.MessageGroup
 import com.exactpro.th2.common.grpc.RawMessage
-import com.exactpro.th2.common.message.addField
-import com.exactpro.th2.common.message.messageType
 import com.exactpro.th2.common.message.toJson
-import com.exactpro.th2.converter.Converter
+import com.exactpro.th2.codec.xml.utils.Converter
+import com.exactpro.th2.codec.xml.xsd.XsdValidator
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.json.JsonMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
@@ -33,19 +32,19 @@ import com.github.underscore.lodash.U
 import com.google.protobuf.ByteString
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import org.xml.sax.SAXException
-import java.io.IOException
 import java.nio.charset.Charset
 import javax.xml.parsers.DocumentBuilder
 import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.parsers.ParserConfigurationException
+import javax.xml.validation.Validator
 import javax.xml.xpath.XPath
 import javax.xml.xpath.XPathFactory
 
 
-open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings)  : IPipelineCodec {
+open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdMap: Map<String, String>)  : IPipelineCodec {
 
     private var xmlCharset: Charset = Charsets.UTF_8
+    private val validator = XsdValidator(xsdMap)
 
     override fun encode(messageGroup: MessageGroup): MessageGroup {
         val messages = messageGroup.messagesList
@@ -64,10 +63,11 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings)  : I
 
     private fun encodeOne(message: Message): RawMessage {
 
-        //val jsonField = checkNotNull(message.getString("json")) {"There no json inside encoding message: $message"}
         val json = Converter.convertProtoToJson(message)
 
         val xmlString = U.jsonToXml(json)
+
+        validator.validate(xmlString.toByteArray())
 
         return RawMessage.newBuilder().apply {
             parentEventId = message.parentEventId
@@ -103,10 +103,10 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings)  : I
 
     private fun decodeOne(rawMessage: RawMessage): Message {
         try {
-            val messageBuilder = Message.newBuilder()
-            val xmlString = rawMessage.body.toStringUtf8()
+            validator.validate(rawMessage.body.toByteArray())
 
-            var jsonString = U.xmlToJson(xmlString, Json.JsonStringBuilder.Step.COMPACT, null )
+            val xmlString = rawMessage.body.toStringUtf8()
+            val jsonString = U.xmlToJson(xmlString, Json.JsonStringBuilder.Step.COMPACT, null )
 
             val jsonNode: JsonNode = jsonMapper.readTree(jsonString)
 
@@ -121,7 +121,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings)  : I
 
             val proto = Converter.convertJsonToProto(jsonNode, msgType, rawMessage)
 
-            /*return messageBuilder.apply {
+            /*return Message.newBuilder().apply {
                 messageType = msgType
                 parentEventId = rawMessage.parentEventId
                 metadataBuilder.also { msgMetadata ->
@@ -137,13 +137,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings)  : I
 
             return proto
         } catch (e: Exception) {
-            when (e) {
-                is IOException,
-                is SAXException -> {
-                    throw DecodeException("Can not decode message. Can not parse XML. ${rawMessage.toJson()}", e)
-                }
-                else -> throw e
-            }
+            throw DecodeException("Can not decode message. Can not parse XML. ${rawMessage.body.toStringUtf8()}", e)
         }
     }
 
