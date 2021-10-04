@@ -8,14 +8,11 @@ import com.exactpro.th2.common.grpc.Value
 import com.exactpro.th2.common.message.*
 import com.exactpro.th2.common.value.getMessage
 import com.exactpro.th2.common.value.toListValue
-import com.exactpro.th2.common.value.toValue
 import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.MapperFeature
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.SerializationFeature
-import com.fasterxml.jackson.databind.json.JsonMapper
-import com.fasterxml.jackson.databind.node.*
-import com.google.protobuf.util.JsonFormat
+import com.fasterxml.jackson.databind.node.ArrayNode
+import com.fasterxml.jackson.databind.node.ObjectNode
+import com.fasterxml.jackson.databind.node.ValueNode
 import java.lang.IllegalArgumentException
 
 
@@ -81,9 +78,13 @@ class Converter {
             ?: throw IllegalArgumentException("JsonNode $node does not contain a message")
 
         fun convertProtoToJson(message: Message) : String = ObjectMapper().createObjectNode().apply {
-            message.allFields.forEach {
-                put(it.key.jsonName, it.value.toString())
+            message.fieldsMap.forEach {
+                putField(it.key, it.value)
             }
         }.toString()
+
+
+
+
     }
 }
