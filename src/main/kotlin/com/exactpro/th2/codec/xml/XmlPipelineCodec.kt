@@ -22,7 +22,7 @@ import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.MessageGroup
 import com.exactpro.th2.common.grpc.RawMessage
 import com.exactpro.th2.common.message.toJson
-import com.exactpro.th2.converter.Converter
+import com.exactpro.th2.codec.utils.Converter
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.json.JsonMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
@@ -31,8 +31,6 @@ import com.github.underscore.lodash.U
 import com.google.protobuf.ByteString
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import org.xml.sax.SAXException
-import java.io.IOException
 import java.nio.charset.Charset
 import javax.xml.parsers.DocumentBuilder
 import javax.xml.parsers.DocumentBuilderFactory

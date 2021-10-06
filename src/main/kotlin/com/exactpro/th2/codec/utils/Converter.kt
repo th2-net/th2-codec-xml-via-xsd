@@ -1,4 +1,4 @@
-package com.exactpro.th2.converter
+package com.exactpro.th2.codec.utils
 
 import com.exactpro.th2.codec.xml.XmlPipelineCodecFactory
 import com.exactpro.th2.common.grpc.ListValue
