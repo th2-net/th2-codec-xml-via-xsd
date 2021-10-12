@@ -2,7 +2,9 @@ package com.exactpro.th2.codec.xml
 
 import com.exactpro.th2.codec.xml.utils.XmlTest
 import com.exactpro.th2.codec.xml.utils.parsedMessage
+import com.exactpro.th2.common.message.addField
 import com.exactpro.th2.common.message.addFields
+import com.exactpro.th2.common.message.message
 import org.junit.jupiter.api.Test
 
 const val ROOT_NAME = "TestMessage01"
@@ -26,9 +28,19 @@ class XmlCustomMessageTypeTest : XmlTest("/$ROOT_NAME/$TYPE_NODE") {
             </$ROOT_NAME>
         """
 
-        val json = """{"$ROOT_NAME":{"$TYPE_NODE":"CustomType","f":"123","abc":{"ab":{"a":"345","b":"678"},"c":"90"}}}"""
         val msg = parsedMessage("CustomType").addFields(
-            "json", json,
+            ROOT_NAME, message().apply {
+                addFields(
+                    TYPE_NODE, "CustomType",
+                    "f", "123",
+                    "abc", message().apply {
+                        addField("ab", message().apply {
+                            addFields("a", "345", "b", "678")
+                        })
+                        addField("c", "90")
+                    }
+                )
+            }
         )
         checkDecode(xml, msg)
     }
@@ -49,9 +61,19 @@ class XmlCustomMessageTypeTest : XmlTest("/$ROOT_NAME/$TYPE_NODE") {
             </$ROOT_NAME>
         """.trimIndent()
 
-        val json = """{"$ROOT_NAME":{"$TYPE_NODE":"CustomType","f":"123","abc":{"ab":{"a":"345","b":"678"},"c":"90"}}}"""
-        val msg = parsedMessage("AnyType").addFields(
-            "json", json,
+        val msg = parsedMessage("CustomType").addFields(
+            ROOT_NAME, message().apply {
+                addFields(
+                    TYPE_NODE, "CustomType",
+                    "f", "123",
+                    "abc", message().apply {
+                        addField("ab", message().apply {
+                            addFields("a", "345", "b", "678")
+                        })
+                        addField("c", "90")
+                    }
+                )
+            }
         )
         checkEncode(xml, msg)
     }

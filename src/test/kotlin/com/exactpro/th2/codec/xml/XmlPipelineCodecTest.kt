@@ -16,31 +16,73 @@ package com.exactpro.th2.codec.xml
 
 import com.exactpro.th2.codec.xml.utils.XmlTest
 import com.exactpro.th2.codec.xml.utils.parsedMessage
+import com.exactpro.th2.common.message.addField
 import com.exactpro.th2.common.message.addFields
+import com.exactpro.th2.common.message.message
 import org.junit.jupiter.api.Test
 
 class XmlPipelineCodecTest : XmlTest() {
 
     @Test
-    fun `test common`() {
+    fun `test common decode`() {
         val xml = """
             <CommonFieldsA>
-                <f>123</f>
-                <abc>
-                    <ab>
-                        <a>345</a>
-                        <b>678</b>
-                    </ab>
-                    <c>90</c>
-                </abc>
+              <f>123</f>
+              <abc>
+                <ab>
+                  <a>345</a>
+                  <b>678</b>
+                </ab>
+                <c>90</c>
+              </abc>
             </CommonFieldsA>
-        """
+        """.trimIndent()
 
-        val json = """{"CommonFieldsA":{"f":"123","abc":{"ab":{"a":"345","b":"678"},"c":"90"}}}"""
         val msg = parsedMessage("CommonFieldsA").addFields(
-            "json", json,
+            "CommonFieldsA", message().apply {
+                addFields(
+                    "f", "123",
+                    "abc", message().apply {
+                        addField("ab", message().apply {
+                            addFields("a", "345", "b", "678")
+                        })
+                        addField("c", "90")
+                    }
+                )
+            }
         )
         checkDecode(xml, msg)
+    }
+
+    @Test
+    fun `test common encode`() {
+        val xml = """
+            <CommonFieldsA>
+              <f>123</f>
+              <abc>
+                <ab>
+                  <a>345</a>
+                  <b>678</b>
+                </ab>
+                <c>90</c>
+              </abc>
+            </CommonFieldsA>
+        """.trimIndent()
+
+        val msg = parsedMessage("CommonFieldsA").addFields(
+            "CommonFieldsA", message().apply {
+                addFields(
+                    "f", "123",
+                    "abc", message().apply {
+                        addField("ab", message().apply {
+                            addFields("a", "345", "b", "678")
+                        })
+                        addField("c", "90")
+                    }
+                )
+            }
+        )
+        checkEncode(xml, msg)
     }
 
 }

@@ -7,7 +7,9 @@ import com.exactpro.th2.codec.xml.utils.parsedMessage
 import com.exactpro.th2.common.grpc.AnyMessage
 import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.MessageGroup
+import com.exactpro.th2.common.message.addField
 import com.exactpro.th2.common.message.addFields
+import com.exactpro.th2.common.message.message
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 
@@ -27,9 +29,15 @@ class XmlCollectionTest : XmlTest() {
                 </collectionMessage>
             </TestCollection>
         """.trimIndent()
-        val json = """{"TestCollection":{"collection":["1234","5678"],"collectionMessage":[{"field0":"1011"},{"field0":"1213"}]}}"""
         val msg = parsedMessage("TestCollection").addFields(
-            "json", json,
+            "TestCollection", message().apply {
+                addField("collection", listOf("1234", "5678"))
+                addField("collectionMessage", listOf(message().apply {
+                    addField("field0", "1011")
+                },message().apply {
+                    addField("field0", "1213")
+                }))
+            },
         )
 
         checkDecode(xml, msg)
@@ -49,9 +57,15 @@ class XmlCollectionTest : XmlTest() {
               </collectionMessage>
             </TestCollection>
         """.trimIndent()
-        val json ="""{"TestCollection":{"collection":["1234","5678"],"collectionMessage":[{"field0":"1011"},{"field0":"1213"}]}}"""
         val msg = parsedMessage("TestCollection").addFields(
-            "json", json,
+            "TestCollection", message().apply {
+                addField("collection", listOf("1234", "5678"))
+                addField("collectionMessage", listOf(message().apply {
+                    addField("field0", "1011")
+                },message().apply {
+                    addField("field0", "1213")
+                }))
+            },
         )
 
         checkEncode(xml, msg)
