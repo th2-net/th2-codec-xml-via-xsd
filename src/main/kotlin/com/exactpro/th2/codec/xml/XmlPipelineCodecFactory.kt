@@ -31,6 +31,9 @@ class XmlPipelineCodecFactory : IPipelineCodecFactory {
 
     override fun init(dictionary: InputStream) {
         xsdMap = bufferDictionary(dictionary)
+        if (xsdMap.isEmpty()) {
+            throw IllegalArgumentException("No xsd were found from input dictionary!")
+        }
     }
 
     override fun create(settings: IPipelineCodecSettings?): IPipelineCodec {
