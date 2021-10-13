@@ -10,8 +10,7 @@ import com.exactpro.th2.common.grpc.MessageGroup
 import com.google.protobuf.TextFormat
 import mu.KotlinLogging
 import org.slf4j.Logger
-import java.io.FileInputStream
-import java.util.zip.ZipInputStream
+import java.io.ByteArrayInputStream
 import kotlin.test.assertEquals
 
 abstract class XmlTest(jsonPathToType: String? = null) {
@@ -40,7 +39,8 @@ abstract class XmlTest(jsonPathToType: String? = null) {
     }
 
     init {
-        val stream = Thread.currentThread().contextClassLoader.getResourceAsStream("XSDset.zip")
+        val emptyZip = byteArrayOf(80, 75, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+        val stream = ByteArrayInputStream(emptyZip)
         val xsdMap = XmlPipelineCodecFactory.bufferDictionary(stream)
         codec = XmlPipelineCodec(XmlPipelineCodecSettings(jsonPathToType), xsdMap)
     }
