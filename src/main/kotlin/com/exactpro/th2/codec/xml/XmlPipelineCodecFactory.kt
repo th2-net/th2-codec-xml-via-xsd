@@ -12,25 +12,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.exactpro.th2.codec.xml
 
 import com.exactpro.th2.codec.api.IPipelineCodec
 import com.exactpro.th2.codec.api.IPipelineCodecFactory
 import com.exactpro.th2.codec.api.IPipelineCodecSettings
+import com.exactpro.th2.codec.xml.utils.ZipBase64Codec
 import mu.KotlinLogging
+import org.apache.commons.io.FileUtils
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
+import java.nio.file.Files
+import java.nio.file.Path
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 
 class XmlPipelineCodecFactory : IPipelineCodecFactory {
     override val settingsClass: Class<out IPipelineCodecSettings> = XmlPipelineCodecSettings::class.java
     override val protocol: String = PROTOCOL
-    lateinit var xsdMap: Map<String, String>
+    lateinit var xsdMap: Map<String, Path>
 
     override fun init(dictionary: InputStream) {
-        xsdMap = bufferDictionary(dictionary)
+        xsdMap = decodeInputDictionary(dictionary, XSD_FOLDER)
         if (xsdMap.isEmpty()) {
             throw IllegalArgumentException("No xsd were found from input dictionary!")
         }
@@ -43,16 +48,16 @@ class XmlPipelineCodecFactory : IPipelineCodecFactory {
     }
 
     companion object {
-        const val PROTOCOL = "XML"
-        private const val XSD_FOLDER: String = "DICTIONARY"
+        private const val XSD_FOLDER: String = "/tmp/xsd"
         private val LOGGER = KotlinLogging.logger { }
+        const val PROTOCOL = "XML"
 
         fun bufferDictionary(inputStream: InputStream) : Map<String, String> {
             val zipXSD = ZipInputStream(inputStream)
             var entryXSD: ZipEntry?
             var nameXSD: String
 
-            File(XSD_FOLDER).mkdir()
+            File(XSD_FOLDER).mkdirs()
 
             val result = mutableMapOf<String, String>()
 
@@ -72,6 +77,25 @@ class XmlPipelineCodecFactory : IPipelineCodecFactory {
             }
 
             return result
+        }
+
+        fun decodeInputDictionary(dictionary: InputStream, parentDir: String): Map<String, Path> {
+            return dictionary.use {
+                val parentDirPath = Path.of(parentDir)
+                Files.createDirectories(parentDirPath)
+                val xsdDir = Files.createTempDirectory(parentDirPath, "")
+
+                val map = ZipBase64Codec.decode(it.readAllBytes(), xsdDir.toFile())
+
+                LOGGER.info {
+                    "Decoded xsd files: ${
+                        FileUtils.listFiles(parentDirPath.toFile(), Array(1) {"proto"}, true).map { file -> 
+                            parentDirPath.relativize(file.toPath()) 
+                        }.toList()
+                    }"
+                }
+                map
+            }
         }
     }
 }

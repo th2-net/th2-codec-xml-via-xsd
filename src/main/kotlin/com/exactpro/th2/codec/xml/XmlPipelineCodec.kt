@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.exactpro.th2.codec.xml
 
 import com.exactpro.th2.codec.CodecException
@@ -34,15 +35,15 @@ import com.google.protobuf.ByteString
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.nio.charset.Charset
+import java.nio.file.Path
 import javax.xml.parsers.DocumentBuilder
 import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.parsers.ParserConfigurationException
-import javax.xml.validation.Validator
 import javax.xml.xpath.XPath
 import javax.xml.xpath.XPathFactory
 
 
-open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdMap: Map<String, String>)  : IPipelineCodec {
+open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdMap: Map<String, Path>)  : IPipelineCodec {
 
     private var xmlCharset: Charset = Charsets.UTF_8
     private val validator = XsdValidator(xsdMap)

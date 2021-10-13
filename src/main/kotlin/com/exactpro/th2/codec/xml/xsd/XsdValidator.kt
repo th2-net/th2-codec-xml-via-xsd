@@ -1,3 +1,18 @@
+/*
+ * Copyright 2021-2021 Exactpro (Exactpro Systems Limited)
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.exactpro.th2.codec.xml.xsd
 
 import com.exactpro.th2.codec.CodecException
@@ -9,8 +24,8 @@ import org.w3c.dom.Node
 import org.w3c.dom.NodeList
 import org.xml.sax.SAXException
 import java.io.ByteArrayInputStream
-import java.io.File
 import java.io.FileInputStream
+import java.nio.file.Path
 import javax.xml.XMLConstants
 import javax.xml.parsers.DocumentBuilder
 import javax.xml.parsers.DocumentBuilderFactory
@@ -19,8 +34,7 @@ import javax.xml.transform.dom.DOMSource
 import javax.xml.validation.SchemaFactory
 import javax.xml.validation.Validator
 
-
-class XsdValidator(private val xsdMap: Map<String, String>) {
+class XsdValidator(private val xsdMap: Map<String, Path>) {
 
     fun validate(xml: ByteArray) {
         ByteArrayInputStream(xml).use { input ->
@@ -37,8 +51,9 @@ class XsdValidator(private val xsdMap: Map<String, String>) {
             attributes.forEach { LOGGER.trace("${it.nodeName}='${it.nodeValue}'") }
 
             xsdMap.forEach { xsd ->
-                val schemaFile = SCHEMA_FACTORY.newSchema(File(xsd.value)) // is it worth for each time??
-                val documentXSD: Document = DOCUMENT_BUILDER.get().parse(FileInputStream(xsd.value))
+                val xsdFile = xsd.value.toFile()
+                val schemaFile = SCHEMA_FACTORY.newSchema(xsdFile) // is it worth for each time??
+                val documentXSD: Document = DOCUMENT_BUILDER.get().parse(FileInputStream(xsdFile))
 
                 attributes.filter { it.nodeValue == documentXSD.documentElement.getAttribute("targetNamespace") }.also {
                     if (it.size != 1) {
