@@ -8,14 +8,12 @@ import java.util.zip.ZipInputStream
 
 class XsdTest {
 
-//    @Test
-//    fun `test parsing multiple xml, schemas,namespaces`() {
-//        val bufferPath = ".\\buffer\\"
-//        File(bufferPath).mkdir()
+    @Test
+    fun `test parsing multiple xml, schemas,namespaces`() {
 //        val xmlSetPath = ".\\sample-resourses\\XMLset.zip"
 //        val xsdSetPath = ".\\sample-resourses\\XSDset.zip"
-//
-//        val xsdMap = XmlPipelineCodecFactory.bufferDictionary(ZipInputStream(FileInputStream(xsdSetPath)))
+
+//        val xsdMap = XmlPipelineCodecFactory.bufferDictionary(Thread.currentThread().contextClassLoader.getResourceAsStream("XSDset.zip")!!)
 //        val validator = XsdValidator(xsdMap)
 //        val pairList = validator.validate(xmlSetPath, xsdSetPath, bufferPath)
 //        pairList.forEach {
@@ -24,5 +22,5 @@ class XsdTest {
 //            val rawMessage = xmlPipelineCodec.encodeMessage(message)!!
 //            assertEquals(it.first.getText(), rawMessage.body.toString(Charsets.UTF_8))
 //        }
-//    }
+    }
 }

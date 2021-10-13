@@ -1,22 +1,16 @@
 package com.exactpro.th2.codec.xml.xsd
 
 import com.exactpro.th2.codec.CodecException
-import com.exactpro.th2.codec.xml.utils.ResourceResolver
-import com.exactpro.th2.codec.xml.xsd.XsdValidator.Companion.forEach
-import com.exactpro.th2.common.grpc.RawMessage
-import com.google.protobuf.TextFormat
 import mu.KotlinLogging
 import org.slf4j.Logger
 import org.w3c.dom.Document
 import org.w3c.dom.NamedNodeMap
 import org.w3c.dom.Node
 import org.w3c.dom.NodeList
+import org.xml.sax.SAXException
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.util.zip.ZipEntry
-import java.util.zip.ZipInputStream
 import javax.xml.XMLConstants
 import javax.xml.parsers.DocumentBuilder
 import javax.xml.parsers.DocumentBuilderFactory
@@ -46,16 +40,15 @@ class XsdValidator(private val xsdMap: Map<String, String>) {
                 val schemaFile = SCHEMA_FACTORY.newSchema(File(xsd.value)) // is it worth for each time??
                 val documentXSD: Document = DOCUMENT_BUILDER.get().parse(FileInputStream(xsd.value))
 
-
-                for (attribute in attributes) {
-                    if (attribute.nodeValue == documentXSD.documentElement.getAttribute("targetNamespace")) {
-
-                        val validator: Validator = schemaFile.newValidator().apply {
-                            errorHandler = XsdErrorHandler()
-                        }
-                        val items = documentXML.getElementsByTagNameNS(attribute.nodeValue, "*")
-                        validator.validate(DOMSource(items.item(0)))
-                        break
+                attributes.filter { it.nodeValue == documentXSD.documentElement.getAttribute("targetNamespace") }.also {
+                    if (it.size != 1) {
+                        throw SAXException("Wrong count (${it.size}) of xsd schema for current xml: ${documentXML.documentElement.nodeName}")
+                    }
+                    val validator: Validator = schemaFile.newValidator().apply {
+                        errorHandler = XsdErrorHandler()
+                    }
+                    documentXML.getElementsByTagNameNS(it[0].nodeValue, "*").item(0).run {
+                        validator.validate(DOMSource(this))
                     }
                 }
                 LOGGER.debug("Validation of raw message with XSD:${xsd.key} finished")
