@@ -24,6 +24,7 @@ import com.exactpro.th2.common.grpc.RawMessage
 import com.exactpro.th2.common.message.toJson
 import com.exactpro.th2.codec.xml.utils.Converter
 import com.exactpro.th2.codec.xml.xsd.XsdValidator
+import com.exactpro.th2.common.message.messageType
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.json.JsonMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
@@ -68,6 +69,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
         val xmlString = U.jsonToXml(json)
 
         validator.validate(xmlString.toByteArray())
+        LOGGER.info("Validation of incoming parsed message complete: ${message.messageType}")
 
         return RawMessage.newBuilder().apply {
             parentEventId = message.parentEventId
@@ -104,7 +106,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
     private fun decodeOne(rawMessage: RawMessage): Message {
         try {
             validator.validate(rawMessage.body.toByteArray())
-
+            LOGGER.info("Validation of incoming raw message complete: ${rawMessage.metadata.idOrBuilder.sequence}")
             val xmlString = rawMessage.body.toStringUtf8()
             val jsonString = U.xmlToJson(xmlString, Json.JsonStringBuilder.Step.COMPACT, null )
 
