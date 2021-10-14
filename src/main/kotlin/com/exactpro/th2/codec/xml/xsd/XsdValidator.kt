@@ -43,7 +43,7 @@ class XsdValidator(private val xsdMap: Map<String, Path>) {
             val attributes = ArrayList<Node>().apply {
                 for (i in 0 until documentXML.documentElement.attributes.length) {
                     val attr = documentXML.documentElement.attributes.item(i)
-                    if (attr.nodeName==SCHEMA_NAME_PROPERTY) {
+                    if (attr.nodeName.contains(SCHEMA_NAME_PROPERTY)) {
                         add(attr)
                     }
 
@@ -59,8 +59,12 @@ class XsdValidator(private val xsdMap: Map<String, Path>) {
                 val schemaFile = SCHEMA_FACTORY.newSchema(xsdFile) // is it worth for each time??
                 val documentXSD: Document = DOCUMENT_BUILDER.get().parse(FileInputStream(xsdFile))
 
+                if (attributes.isEmpty()) {
+                    return
+                }
+
                 attributes.filter { it.nodeValue == documentXSD.documentElement.getAttribute("targetNamespace") }.also {
-                    if (it.size > 1) {
+                    if (it.size != 1) {
                         throw SAXException("Wrong count (${it.size}) of xsd schema for current xml: ${documentXML.documentElement.nodeName}")
                     }
 
@@ -82,7 +86,7 @@ class XsdValidator(private val xsdMap: Map<String, Path>) {
         nodeList.runCatching {
             filter { it.nodeType == Node.ELEMENT_NODE }.forEach { node ->
                 node.attributes.forEach {
-                    if (it.nodeName==SCHEMA_NAME_PROPERTY) {
+                    if (it.nodeName.contains(SCHEMA_NAME_PROPERTY)) {
                         this@addAllAttributes.add(it)
                     }
                 }
