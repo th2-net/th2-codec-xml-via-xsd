@@ -68,10 +68,9 @@ class XsdValidator(private val xsdMap: Map<String, Path>) {
                         val validator: Validator = schemaFile.newValidator().apply {
                             errorHandler = XsdErrorHandler()
                         }
-                        documentXML.getElementsByTagNameNS(it[0].nodeValue, "*").item(0).run {
-                            validator.validate(DOMSource(this))
-                        }
-                        LOGGER.debug("Validation of raw message with XSD:${xsd.key} finished")
+                        val item = documentXML.getElementsByTagNameNS(it[0].nodeValue, "*").item(0)
+                        validator.validate(DOMSource(item))
+                        LOGGER.debug("Validation of raw message with XSD: ${documentXSD.documentElement.getAttribute("targetNamespace")} finished")
                     }
                 }
 
@@ -103,7 +102,9 @@ class XsdValidator(private val xsdMap: Map<String, Path>) {
 
         private val DOCUMENT_BUILDER: ThreadLocal<DocumentBuilder> = ThreadLocal.withInitial {
             try {
-                DocumentBuilderFactory.newInstance().newDocumentBuilder()
+                DocumentBuilderFactory.newInstance().apply {
+                    isNamespaceAware = true
+                }.newDocumentBuilder()
             } catch (e: ParserConfigurationException) {
                 throw CodecException("Error while initialization. Can not create DocumentBuilderFactory", e)
             }
