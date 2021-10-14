@@ -43,7 +43,7 @@ class XsdValidator(private val xsdMap: Map<String, Path>) {
             val attributes = ArrayList<Node>().apply {
                 for (i in 0 until documentXML.documentElement.attributes.length) {
                     val attr = documentXML.documentElement.attributes.item(i)
-                    if (attr.nodeName.endsWith(SCHEMA_NAME_PROPERTY)) {
+                    if (attr.nodeName.contains(SCHEMA_NAME_PROPERTY)) {
                         add(attr)
                     }
 
@@ -77,7 +77,7 @@ class XsdValidator(private val xsdMap: Map<String, Path>) {
         nodeList.runCatching {
             filter { it.nodeType == Node.ELEMENT_NODE }.forEach { node ->
                 node.attributes.forEach {
-                    if (it.nodeName.endsWith(SCHEMA_NAME_PROPERTY)) {
+                    if (it.nodeName.contains(SCHEMA_NAME_PROPERTY)) {
                         this@addAllAttributes.add(it)
                     }
                 }
