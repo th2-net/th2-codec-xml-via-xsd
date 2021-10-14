@@ -17,15 +17,15 @@ package com.exactpro.th2.codec.xml
 
 import com.exactpro.th2.codec.xml.utils.XmlTest
 import com.exactpro.th2.codec.xml.utils.ZipBase64Codec
-import org.apache.commons.io.FileUtils
+import com.exactpro.th2.common.grpc.AnyMessage
+import com.exactpro.th2.common.grpc.MessageGroup
+import com.exactpro.th2.common.grpc.RawMessage
+import com.google.protobuf.ByteString
 import org.junit.jupiter.api.Test
-import java.io.File
-import java.io.IOException
-import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.Base64
 import kotlin.test.assertContains
+import kotlin.test.assertFailsWith
 
 
 class XsdTest : XmlTest() {
@@ -50,6 +50,29 @@ class XsdTest : XmlTest() {
         assertContains(xsdMap, "music_band.xsd")
         assertContains(xsdMap, "registration.xsd")
         assertContains(xsdMap, "service.xsd")
+    }
+
+    @Test
+    fun `xsd not found exception`() {
+        val xml = """
+            <Attributes xmlns="test.123.123.01" defaultMsgAttrA="123" msgAttrA="45" msgAttrB="67">
+                <commonWithAttrs commonAttrA="54" commonAttrB="76">abc</commonWithAttrs>
+                <withAttrs defaultFieldAttrA="456" fieldAttrA="10" fieldAttrB="30">def</withAttrs>
+            </Attributes>
+        """.trimIndent()
+
+        val raw = RawMessage.newBuilder().apply {
+            body = ByteString.copyFrom(xml.toByteArray())
+        }.build()
+
+        val group = MessageGroup.newBuilder().apply {
+            addMessages(AnyMessage.newBuilder().setRawMessage(raw).build())
+        }.build()
+
+
+        assertFailsWith<IllegalStateException> ("Error needed due no xsd for xml validation") {
+            codec.decode(group)
+        }
     }
 
 }

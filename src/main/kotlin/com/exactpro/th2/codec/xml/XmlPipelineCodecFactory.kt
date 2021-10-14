@@ -19,9 +19,13 @@ import com.exactpro.th2.codec.api.IPipelineCodec
 import com.exactpro.th2.codec.api.IPipelineCodecFactory
 import com.exactpro.th2.codec.api.IPipelineCodecSettings
 import com.exactpro.th2.codec.xml.utils.ZipBase64Codec
+import com.exactpro.th2.codec.xml.xsd.XsdValidator
 import mu.KotlinLogging
 import org.apache.commons.io.FileUtils
+import org.w3c.dom.Document
+import org.xml.sax.SAXException
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.nio.file.Files
@@ -49,43 +53,30 @@ class XmlPipelineCodecFactory : IPipelineCodecFactory {
 
     companion object {
         private const val XSD_FOLDER: String = "/tmp/xsd"
+        private const val XSD_NAMESPACE_ATTRIBUTE: String = "targetNamespace"
         private val LOGGER = KotlinLogging.logger { }
         const val PROTOCOL = "XML"
 
-        fun bufferDictionary(inputStream: InputStream) : Map<String, String> {
-            val zipXSD = ZipInputStream(inputStream)
-            var entryXSD: ZipEntry?
-            var nameXSD: String
-
-            File(XSD_FOLDER).mkdirs()
-
-            val result = mutableMapOf<String, String>()
-
-            while (zipXSD.nextEntry.also { entryXSD = it } != null) {
-                nameXSD = entryXSD!!.name
-                val path = "$XSD_FOLDER/$nameXSD"
-
-                LOGGER.trace("XSD: $path")
-
-                val bufferFile = FileOutputStream(path)
-                var c: Int = zipXSD.read()
-                while (c != -1) {
-                    bufferFile.write(c)
-                    c = zipXSD.read()
-                }
-                result[nameXSD] = path
-            }
-
-            return result
-        }
-
         fun decodeInputDictionary(dictionary: InputStream, parentDir: String): Map<String, Path> {
-            return dictionary.use {
+            return dictionary.use { it ->
                 val parentDirPath = Path.of(parentDir)
                 Files.createDirectories(parentDirPath)
                 val xsdDir = Files.createTempDirectory(parentDirPath, "")
 
-                val map = ZipBase64Codec.decode(it.readAllBytes(), xsdDir.toFile())
+                val pathMap = ZipBase64Codec.decode(it.readAllBytes(), xsdDir.toFile())
+
+                val xmlnsMap = mutableMapOf<String, Path>()
+
+                pathMap.forEach { xsd ->
+                    val xsdFile = xsd.value.toFile()
+                    val documentXSD: Document = XsdValidator.DOCUMENT_BUILDER.get().parse(FileInputStream(xsdFile))
+                    documentXSD.documentElement.getAttribute(XSD_NAMESPACE_ATTRIBUTE)?.also { xmlns ->
+                        if(xmlnsMap.contains(xmlns)) {
+                            throw SAXException("More than one xsd for key '$xmlns' | File names: ${xmlnsMap[xmlns]?.fileName}, ${xsd.value.fileName}")
+                        }
+                        xmlnsMap[xmlns] = xsd.value
+                    } ?: throw SAXException("Cannot find attribute '$XSD_NAMESPACE_ATTRIBUTE' in xsd '${xsd.key}'")
+                }
 
                 LOGGER.info {
                     "Decoded xsd files: ${
@@ -94,7 +85,7 @@ class XmlPipelineCodecFactory : IPipelineCodecFactory {
                         }.toList()
                     }"
                 }
-                map
+                xmlnsMap
             }
         }
     }

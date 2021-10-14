@@ -33,7 +33,7 @@ import kotlin.test.assertEquals
 
 abstract class XmlTest(jsonPathToType: String? = null, nameOfXsdResource: String? = null) {
 
-    private val codec: IPipelineCodec
+    protected val codec: IPipelineCodec
 
     protected fun checkEncode(xml: String, message: Message.Builder) {
         val group = codec.encode(MessageGroup.newBuilder().addMessages(AnyMessage.newBuilder().setMessage(message)).build())

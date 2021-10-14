@@ -43,7 +43,7 @@ class XsdValidator(private val xsdMap: Map<String, Path>) {
             val attributes = ArrayList<Node>().apply {
                 for (i in 0 until documentXML.documentElement.attributes.length) {
                     val attr = documentXML.documentElement.attributes.item(i)
-                    if (attr.nodeName.contains(SCHEMA_NAME_PROPERTY)) {
+                    if (attr.nodeName.endsWith(SCHEMA_NAME_PROPERTY)) {
                         add(attr)
                     }
 
@@ -54,31 +54,22 @@ class XsdValidator(private val xsdMap: Map<String, Path>) {
             LOGGER.trace("\nAll attributes that was found:\n")
             attributes.forEach { LOGGER.trace("${it.nodeName}='${it.nodeValue}'") }
 
-            xsdMap.forEach { xsd ->
-                val xsdFile = xsd.value.toFile()
+            attributes.forEach { attribute ->
+                val xsdPath = xsdMap[attribute.nodeValue]
+                checkNotNull(xsdPath) { "Cannot find xsd for current `${attribute.nodeName}` attribute: ${attribute.nodeValue}" }
+
+                val xsdFile = xsdPath.toFile()
                 val schemaFile = SCHEMA_FACTORY.newSchema(xsdFile) // is it worth for each time??
-                val documentXSD: Document = DOCUMENT_BUILDER.get().parse(FileInputStream(xsdFile))
 
-                if (attributes.isEmpty()) {
-                    return
+                val validator: Validator = schemaFile.newValidator().apply {
+                    errorHandler = XsdErrorHandler()
                 }
 
-                attributes.filter { it.nodeValue == documentXSD.documentElement.getAttribute("targetNamespace") }.also {
-                    if (it.size != 1) {
-                        throw SAXException("Wrong count (${it.size}) of xsd schema for current xml: ${documentXML.documentElement.nodeName}")
-                    }
-
-                    if (it.isNotEmpty()) {
-                        val validator: Validator = schemaFile.newValidator().apply {
-                            errorHandler = XsdErrorHandler()
-                        }
-                        val item = documentXML.getElementsByTagNameNS(it[0].nodeValue, "*").item(0)
-                        validator.validate(DOMSource(item))
-                        LOGGER.debug("Validation of raw message with XSD: ${documentXSD.documentElement.getAttribute("targetNamespace")} finished")
-                    }
-                }
-
+                val item = documentXML.getElementsByTagNameNS(attribute.nodeValue, "*").item(0)
+                validator.validate(DOMSource(item))
+                LOGGER.debug("Validation of raw message with XSD: ${xsdPath.fileName} finished")
             }
+
         }
     }
 
@@ -86,7 +77,7 @@ class XsdValidator(private val xsdMap: Map<String, Path>) {
         nodeList.runCatching {
             filter { it.nodeType == Node.ELEMENT_NODE }.forEach { node ->
                 node.attributes.forEach {
-                    if (it.nodeName.contains(SCHEMA_NAME_PROPERTY)) {
+                    if (it.nodeName.endsWith(SCHEMA_NAME_PROPERTY)) {
                         this@addAllAttributes.add(it)
                     }
                 }
@@ -104,7 +95,7 @@ class XsdValidator(private val xsdMap: Map<String, Path>) {
             errorHandler = XsdErrorHandler()
         }
 
-        private val DOCUMENT_BUILDER: ThreadLocal<DocumentBuilder> = ThreadLocal.withInitial {
+        val DOCUMENT_BUILDER: ThreadLocal<DocumentBuilder> = ThreadLocal.withInitial {
             try {
                 DocumentBuilderFactory.newInstance().apply {
                     isNamespaceAware = true
