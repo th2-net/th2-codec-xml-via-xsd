@@ -17,6 +17,7 @@ package com.exactpro.th2.codec.xml.utils
 
 import com.exactpro.th2.codec.api.IPipelineCodec
 import com.exactpro.th2.codec.xml.XmlPipelineCodec
+import com.exactpro.th2.codec.xml.XmlPipelineCodecFactory.Companion.decodeInputDictionary
 import com.exactpro.th2.codec.xml.XmlPipelineCodecSettings
 import com.exactpro.th2.common.grpc.AnyMessage
 import com.exactpro.th2.common.grpc.Message
@@ -25,6 +26,7 @@ import com.google.protobuf.TextFormat
 import mu.KotlinLogging
 import org.apache.commons.io.FileUtils
 import org.slf4j.Logger
+import java.io.ByteArrayInputStream
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
@@ -63,7 +65,7 @@ abstract class XmlTest(jsonPathToType: String? = null, nameOfXsdResource: String
             }
             val zipBase64 = Thread.currentThread().contextClassLoader.getResource(nameOfXsdResource)!!
 
-            ZipBase64Codec.decode(encodeFileToBase64Binary(zipBase64.file), parentDirPath.toFile())
+            decodeInputDictionary(ByteArrayInputStream(encodeFileToBase64Binary(zipBase64.file)), parentDirPath.toString())
         } ?: mapOf()
 
         codec = XmlPipelineCodec(XmlPipelineCodecSettings(jsonPathToType), xsdMap)
