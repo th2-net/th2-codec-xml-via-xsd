@@ -107,7 +107,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
     private fun decodeOne(rawMessage: RawMessage): Message {
         try {
             validator.validate(rawMessage.body.toByteArray())
-            LOGGER.info("Validation of incoming raw message complete: ${rawMessage.metadata.idOrBuilder.sequence}")
+            LOGGER.info("Validation of incoming raw message complete: ${rawMessage.metadata.idOrBuilder}")
             val xmlString = rawMessage.body.toStringUtf8()
             val jsonString = U.xmlToJson(xmlString, Json.JsonStringBuilder.Step.COMPACT, null )
 

@@ -42,7 +42,11 @@ class XsdValidator(private val xsdMap: Map<String, Path>) {
 
             val attributes = ArrayList<Node>().apply {
                 for (i in 0 until documentXML.documentElement.attributes.length) {
-                    add(documentXML.documentElement.attributes.item(i))
+                    val attr = documentXML.documentElement.attributes.item(i)
+                    if (attr.nodeName==SCHEMA_NAME_PROPERTY) {
+                        add(attr)
+                    }
+
                 }
                 addAllAttributes(documentXML.documentElement.childNodes)
             }
@@ -56,17 +60,21 @@ class XsdValidator(private val xsdMap: Map<String, Path>) {
                 val documentXSD: Document = DOCUMENT_BUILDER.get().parse(FileInputStream(xsdFile))
 
                 attributes.filter { it.nodeValue == documentXSD.documentElement.getAttribute("targetNamespace") }.also {
-                    if (it.size != 1) {
+                    if (it.size > 1) {
                         throw SAXException("Wrong count (${it.size}) of xsd schema for current xml: ${documentXML.documentElement.nodeName}")
                     }
-                    val validator: Validator = schemaFile.newValidator().apply {
-                        errorHandler = XsdErrorHandler()
-                    }
-                    documentXML.getElementsByTagNameNS(it[0].nodeValue, "*").item(0).run {
-                        validator.validate(DOMSource(this))
+
+                    if (it.isNotEmpty()) {
+                        val validator: Validator = schemaFile.newValidator().apply {
+                            errorHandler = XsdErrorHandler()
+                        }
+                        documentXML.getElementsByTagNameNS(it[0].nodeValue, "*").item(0).run {
+                            validator.validate(DOMSource(this))
+                        }
+                        LOGGER.debug("Validation of raw message with XSD:${xsd.key} finished")
                     }
                 }
-                LOGGER.debug("Validation of raw message with XSD:${xsd.key} finished")
+
             }
         }
     }
@@ -74,7 +82,11 @@ class XsdValidator(private val xsdMap: Map<String, Path>) {
     private fun ArrayList<Node>.addAllAttributes(nodeList: NodeList) {
         nodeList.runCatching {
             filter { it.nodeType == Node.ELEMENT_NODE }.forEach { node ->
-                node.attributes.forEach(this@addAllAttributes::add)
+                node.attributes.forEach {
+                    if (it.nodeName==SCHEMA_NAME_PROPERTY) {
+                        this@addAllAttributes.add(it)
+                    }
+                }
                 addAllAttributes(node.childNodes)
             }
         }
@@ -82,6 +94,7 @@ class XsdValidator(private val xsdMap: Map<String, Path>) {
 
 
     companion object {
+        private const val SCHEMA_NAME_PROPERTY = "xmlns"
         private val LOGGER: Logger = KotlinLogging.logger { }
 
         private val SCHEMA_FACTORY = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI).apply {

@@ -15,18 +15,20 @@
 
 package com.exactpro.th2.codec.xml
 
+import com.exactpro.th2.codec.xml.utils.XmlTest
 import com.exactpro.th2.codec.xml.utils.ZipBase64Codec
 import org.apache.commons.io.FileUtils
 import org.junit.jupiter.api.Test
 import java.io.File
 import java.io.IOException
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Base64
 import kotlin.test.assertContains
 
 
-class XsdTest {
+class XsdTest : XmlTest() {
 
     @Test
     fun `decode xsd schemas to tmp folder`() {
@@ -35,6 +37,11 @@ class XsdTest {
         }
 
         val zipBase64 = Thread.currentThread().contextClassLoader.getResource("XSDset.zip")!!
+
+//        File("xsd_dictionary.txt").apply {
+//            createNewFile()
+//            writeText(String(encodeFileToBase64Binary(zipBase64.file), StandardCharsets.UTF_8))
+//        }
 
         val xsdMap = ZipBase64Codec.decode(encodeFileToBase64Binary(zipBase64.file), parentDirPath.toFile())
         assertContains(xsdMap, "cafm.001.001.01.xsd")
@@ -45,9 +52,4 @@ class XsdTest {
         assertContains(xsdMap, "service.xsd")
     }
 
-    @Throws(IOException::class)
-    private fun encodeFileToBase64Binary(fileName: String): ByteArray {
-        val file = File(fileName)
-        return Base64.getEncoder().encode(FileUtils.readFileToByteArray(file))
-    }
 }

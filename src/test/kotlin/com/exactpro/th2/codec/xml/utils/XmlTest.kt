@@ -23,10 +23,15 @@ import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.MessageGroup
 import com.google.protobuf.TextFormat
 import mu.KotlinLogging
+import org.apache.commons.io.FileUtils
 import org.slf4j.Logger
+import java.io.File
+import java.nio.file.Files
+import java.nio.file.Path
+import java.util.Base64
 import kotlin.test.assertEquals
 
-abstract class XmlTest(jsonPathToType: String? = null) {
+abstract class XmlTest(jsonPathToType: String? = null, nameOfXsdResource: String? = null) {
 
     private val codec: IPipelineCodec
 
@@ -52,7 +57,21 @@ abstract class XmlTest(jsonPathToType: String? = null) {
     }
 
     init {
-        codec = XmlPipelineCodec(XmlPipelineCodecSettings(jsonPathToType), mapOf())
+        val xsdMap = nameOfXsdResource?.run {
+            val parentDirPath = Path.of("tmp").also {
+                Files.createDirectories(it)
+            }
+            val zipBase64 = Thread.currentThread().contextClassLoader.getResource(nameOfXsdResource)!!
+
+            ZipBase64Codec.decode(encodeFileToBase64Binary(zipBase64.file), parentDirPath.toFile())
+        } ?: mapOf()
+
+        codec = XmlPipelineCodec(XmlPipelineCodecSettings(jsonPathToType), xsdMap)
+    }
+
+    protected fun encodeFileToBase64Binary(fileName: String): ByteArray {
+        val file = File(fileName)
+        return Base64.getEncoder().encode(FileUtils.readFileToByteArray(file))
     }
 
     companion object {
