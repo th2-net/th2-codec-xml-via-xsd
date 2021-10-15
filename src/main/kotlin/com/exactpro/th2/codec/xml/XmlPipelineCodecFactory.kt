@@ -60,7 +60,7 @@ class XmlPipelineCodecFactory : IPipelineCodecFactory {
         fun decodeInputDictionary(dictionary: InputStream, parentDir: String): Map<String, Path> {
             return dictionary.use {
                 val parentDirPath = Path.of(parentDir)
-                Files.createDirectories(parentDirPath)
+                Files.createDirectory(parentDirPath)
                 val xsdDir = Files.createTempDirectory(parentDirPath, "")
                 val pathMap = ZipBase64Codec.decode(it.readAllBytes(), xsdDir.toFile())
 

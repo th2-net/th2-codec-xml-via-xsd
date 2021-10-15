@@ -46,7 +46,7 @@ import javax.xml.xpath.XPathFactory
 open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdMap: Map<String, Path>)  : IPipelineCodec {
 
     private var xmlCharset: Charset = Charsets.UTF_8
-    private val validator = XsdValidator(xsdMap)
+    private val validator = XsdValidator(xsdMap, settings.dirtyValidation)
 
     override fun encode(messageGroup: MessageGroup): MessageGroup {
         val messages = messageGroup.messagesList

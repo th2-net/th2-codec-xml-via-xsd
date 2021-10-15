@@ -32,37 +32,45 @@ import javax.xml.transform.dom.DOMSource
 import javax.xml.validation.SchemaFactory
 import javax.xml.validation.Validator
 
-class XsdValidator(private val xsdMap: Map<String, Path>) {
+class XsdValidator(private val xsdMap: Map<String, Path>, private val dirtyValidation: Boolean) {
 
     fun validate(xml: ByteArray) {
-        ByteArrayInputStream(xml).use { input ->
-            val documentXML = DOCUMENT_BUILDER.get().parse(input)
+        try {
+            ByteArrayInputStream(xml).use { input ->
+                val documentXML = DOCUMENT_BUILDER.get().parse(input)
 
-            val attributes = documentXML.findAttributes(SCHEMA_NAME_PROPERTY)
+                val attributes = documentXML.findAttributes(SCHEMA_NAME_PROPERTY)
 
-            LOGGER.trace("\nAll attributes that was found:\n")
-            attributes.forEach { LOGGER.trace("${it.nodeName}='${it.nodeValue}'") }
+                LOGGER.trace("\nAll attributes that was found:\n")
+                attributes.forEach { LOGGER.trace("${it.nodeName}='${it.nodeValue}'") }
 
-            attributes.forEach { attribute ->
-                val schemas = getSchemas(attribute.nodeValue)
-                schemas.forEach { schema ->
-                    val xsdPath = xsdMap[schema.value]
-                    checkNotNull(xsdPath) { "Cannot find xsd for current `${attribute.nodeName}` attribute: ${attribute.nodeValue}" }
+                attributes.forEach { attribute ->
+                    val schemas = getSchemas(attribute.nodeValue)
+                    schemas.forEach { schema ->
+                        val xsdPath = xsdMap[schema.value]
+                        checkNotNull(xsdPath) { "Cannot find xsd for current `${attribute.nodeName}` attribute: ${attribute.nodeValue}" }
 
-                    val xsdFile = xsdPath.toFile()
-                    val schemaFile = SCHEMA_FACTORY.newSchema(xsdFile) // is it worth for each time??
+                        val xsdFile = xsdPath.toFile()
+                        val schemaFile = SCHEMA_FACTORY.newSchema(xsdFile) // is it worth for each time??
 
-                    val validator: Validator = schemaFile.newValidator().apply {
-                        errorHandler = XsdErrorHandler()
+                        val validator: Validator = schemaFile.newValidator().apply {
+                            errorHandler = XsdErrorHandler()
+                        }
+
+                        val item = documentXML.getElementsByTagNameNS(attribute.nodeValue, "*").item(0)
+                        validator.validate(DOMSource(item))
+                        LOGGER.debug("Validation of raw message with XSD: ${xsdPath.fileName} finished")
                     }
-
-                    val item = documentXML.getElementsByTagNameNS(attribute.nodeValue, "*").item(0)
-                    validator.validate(DOMSource(item))
-                    LOGGER.debug("Validation of raw message with XSD: ${xsdPath.fileName} finished")
                 }
             }
-
+        } catch (e: Exception) {
+            if (dirtyValidation) {
+                LOGGER.error("VALIDATION ERROR: ", e)
+            } else {
+                throw e
+            }
         }
+
     }
 
     private fun getSchemas(input: String): Map<String, String> {

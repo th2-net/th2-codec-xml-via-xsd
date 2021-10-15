@@ -60,12 +60,8 @@ abstract class XmlTest(jsonPathToType: String? = null, nameOfXsdResource: String
 
     init {
         val xsdMap = nameOfXsdResource?.run {
-            val parentDirPath = Path.of("tmp").also {
-                Files.createDirectories(it)
-            }
             val zipBase64 = Thread.currentThread().contextClassLoader.getResource(nameOfXsdResource)!!
-
-            decodeInputDictionary(ByteArrayInputStream(encodeFileToBase64Binary(zipBase64.file)), parentDirPath.toString())
+            decodeInputDictionary(ByteArrayInputStream(encodeFileToBase64Binary(zipBase64.file)), Path.of("tmp").toString())
         } ?: mapOf()
 
         codec = XmlPipelineCodec(XmlPipelineCodecSettings(jsonPathToType), xsdMap)
