@@ -58,25 +58,23 @@ class XmlPipelineCodecFactory : IPipelineCodecFactory {
         const val PROTOCOL = "XML"
 
         fun decodeInputDictionary(dictionary: InputStream, parentDir: String): Map<String, Path> {
-            return dictionary.use { it ->
+            return dictionary.use {
                 val parentDirPath = Path.of(parentDir)
                 Files.createDirectories(parentDirPath)
                 val xsdDir = Files.createTempDirectory(parentDirPath, "")
-
                 val pathMap = ZipBase64Codec.decode(it.readAllBytes(), xsdDir.toFile())
 
-                val xmlnsMap = mutableMapOf<String, Path>()
-
-                pathMap.forEach { xsd ->
-                    val xsdFile = xsd.value.toFile()
-                    val documentXSD: Document = XsdValidator.DOCUMENT_BUILDER.get().parse(FileInputStream(xsdFile))
-                    documentXSD.documentElement.getAttribute(XSD_NAMESPACE_ATTRIBUTE)?.also { xmlns ->
-                        if(xmlnsMap.contains(xmlns)) {
-                            throw SAXException("More than one xsd for key '$xmlns' | File names: ${xmlnsMap[xmlns]?.fileName}, ${xsd.value.fileName}")
-                        }
-                        xmlnsMap[xmlns] = xsd.value
-                    } ?: throw SAXException("Cannot find attribute '$XSD_NAMESPACE_ATTRIBUTE' in xsd '${xsd.key}'")
-                }
+//                val xmlnsMap = mutableMapOf<String, Path>()
+//                pathMap.forEach { xsd ->
+//                    val xsdFile = xsd.value.toFile()
+//                    val documentXSD: Document = XsdValidator.DOCUMENT_BUILDER.get().parse(FileInputStream(xsdFile))
+//                    documentXSD.documentElement.getAttribute(XSD_NAMESPACE_ATTRIBUTE)?.also { namespace ->
+//                        if(xmlnsMap.contains(namespace)) {
+//                            throw SAXException("More than one xsd for key '$namespace' | File names: ${xmlnsMap[namespace]?.fileName}, ${xsd.value.fileName}")
+//                        }
+//                        xmlnsMap[namespace] = xsd.value
+//                    } ?: throw SAXException("Cannot find attribute '$XSD_NAMESPACE_ATTRIBUTE' in xsd '${xsd.key}'")
+//                }
 
                 LOGGER.info {
                     "Decoded xsd files: ${
@@ -85,7 +83,7 @@ class XmlPipelineCodecFactory : IPipelineCodecFactory {
                         }.toList()
                     }"
                 }
-                xmlnsMap
+                pathMap
             }
         }
     }

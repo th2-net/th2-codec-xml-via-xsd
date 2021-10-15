@@ -55,7 +55,7 @@ class XsdTest : XmlTest() {
     @Test
     fun `xsd not found exception`() {
         val xml = """
-            <Attributes xmlns="test.123.123.01" defaultMsgAttrA="123" msgAttrA="45" msgAttrB="67">
+            <Attributes schemaLocation="test.123.123.01 test.xsd" defaultMsgAttrA="123" msgAttrA="45" msgAttrB="67">
                 <commonWithAttrs commonAttrA="54" commonAttrB="76">abc</commonWithAttrs>
                 <withAttrs defaultFieldAttrA="456" fieldAttrA="10" fieldAttrB="30">def</withAttrs>
             </Attributes>

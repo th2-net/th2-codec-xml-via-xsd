@@ -22,9 +22,7 @@ import org.w3c.dom.Document
 import org.w3c.dom.NamedNodeMap
 import org.w3c.dom.Node
 import org.w3c.dom.NodeList
-import org.xml.sax.SAXException
 import java.io.ByteArrayInputStream
-import java.io.FileInputStream
 import java.nio.file.Path
 import javax.xml.XMLConstants
 import javax.xml.parsers.DocumentBuilder
@@ -40,55 +38,75 @@ class XsdValidator(private val xsdMap: Map<String, Path>) {
         ByteArrayInputStream(xml).use { input ->
             val documentXML = DOCUMENT_BUILDER.get().parse(input)
 
-            val attributes = ArrayList<Node>().apply {
-                for (i in 0 until documentXML.documentElement.attributes.length) {
-                    val attr = documentXML.documentElement.attributes.item(i)
-                    if (attr.nodeName.contains(SCHEMA_NAME_PROPERTY)) {
-                        add(attr)
-                    }
-
-                }
-                addAllAttributes(documentXML.documentElement.childNodes)
-            }
+            val attributes = documentXML.findAttributes(SCHEMA_NAME_PROPERTY)
 
             LOGGER.trace("\nAll attributes that was found:\n")
             attributes.forEach { LOGGER.trace("${it.nodeName}='${it.nodeValue}'") }
 
             attributes.forEach { attribute ->
-                val xsdPath = xsdMap[attribute.nodeValue]
-                checkNotNull(xsdPath) { "Cannot find xsd for current `${attribute.nodeName}` attribute: ${attribute.nodeValue}" }
+                val schemas = getSchemas(attribute.nodeValue)
+                schemas.forEach { schema ->
+                    val xsdPath = xsdMap[schema.value]
+                    checkNotNull(xsdPath) { "Cannot find xsd for current `${attribute.nodeName}` attribute: ${attribute.nodeValue}" }
 
-                val xsdFile = xsdPath.toFile()
-                val schemaFile = SCHEMA_FACTORY.newSchema(xsdFile) // is it worth for each time??
+                    val xsdFile = xsdPath.toFile()
+                    val schemaFile = SCHEMA_FACTORY.newSchema(xsdFile) // is it worth for each time??
 
-                val validator: Validator = schemaFile.newValidator().apply {
-                    errorHandler = XsdErrorHandler()
+                    val validator: Validator = schemaFile.newValidator().apply {
+                        errorHandler = XsdErrorHandler()
+                    }
+
+                    val item = documentXML.getElementsByTagNameNS(attribute.nodeValue, "*").item(0)
+                    validator.validate(DOMSource(item))
+                    LOGGER.debug("Validation of raw message with XSD: ${xsdPath.fileName} finished")
                 }
-
-                val item = documentXML.getElementsByTagNameNS(attribute.nodeValue, "*").item(0)
-                validator.validate(DOMSource(item))
-                LOGGER.debug("Validation of raw message with XSD: ${xsdPath.fileName} finished")
             }
 
         }
     }
 
-    private fun ArrayList<Node>.addAllAttributes(nodeList: NodeList) {
+    private fun getSchemas(input: String): Map<String, String> {
+        val result = mutableMapOf<String, String>()
+
+        input.split(" ").also {
+            check(it.size%2==0) {"schemas must have pairs but had: ${it.size} count"}
+            for (i in 0 until it.size-1 step 2) {
+                result[it[i]] = it[i+1]
+            }
+        }
+
+        return result
+    }
+
+    private fun Document.findAttributes(attributeName: String) : ArrayList<Node>{
+        val result = ArrayList<Node>()
+        for (i in 0 until documentElement.attributes.length) {
+            val attr = documentElement.attributes.item(i)
+            if (attr.nodeName.contains(attributeName)) {
+                result.add(attr)
+            }
+
+        }
+        result.addAllAttributes(documentElement.childNodes, attributeName)
+        return result
+    }
+
+    private fun ArrayList<Node>.addAllAttributes(nodeList: NodeList, attributeName: String) {
         nodeList.runCatching {
             filter { it.nodeType == Node.ELEMENT_NODE }.forEach { node ->
                 node.attributes.forEach {
-                    if (it.nodeName.contains(SCHEMA_NAME_PROPERTY)) {
+                    if (it.nodeName.contains(attributeName)) {
                         this@addAllAttributes.add(it)
                     }
                 }
-                addAllAttributes(node.childNodes)
+                addAllAttributes(node.childNodes, attributeName)
             }
         }
     }
 
 
     companion object {
-        private const val SCHEMA_NAME_PROPERTY = "xmlns"
+        private const val SCHEMA_NAME_PROPERTY = "schemaLocation"
         private val LOGGER: Logger = KotlinLogging.logger { }
 
         private val SCHEMA_FACTORY = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI).apply {
