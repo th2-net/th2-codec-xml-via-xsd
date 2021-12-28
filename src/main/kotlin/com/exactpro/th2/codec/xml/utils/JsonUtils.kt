@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2021 Exactpro (Exactpro Systems Limited)
+ * Copyright 2021-2022 Exactpro (Exactpro Systems Limited)
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -21,13 +21,10 @@ import com.exactpro.th2.common.grpc.Value
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 
-private fun ObjectNode.putObject(name: String, message: Message) {
-    putObject(name).let { newMessageNode ->
-        message.fieldsMap.forEach {
-            newMessageNode.putField(it.key, it.value)
-        }
+private fun ObjectNode.putObject(name: String, message: Message): Unit = putObject(name).let { newMessageNode ->
+    message.fieldsMap.forEach {
+        newMessageNode.putField(it.key, it.value)
     }
-
 }
 
 fun ObjectNode.putField(name: String, field: Value) {

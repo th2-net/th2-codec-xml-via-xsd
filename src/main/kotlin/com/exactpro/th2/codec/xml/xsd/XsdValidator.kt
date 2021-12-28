@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2021 Exactpro (Exactpro Systems Limited)
+ * Copyright 2021-2022 Exactpro (Exactpro Systems Limited)
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -41,14 +41,10 @@ class XsdValidator(private val xsdMap: Map<String, Path>, private val dirtyValid
 
                 val attributes = documentXML.findAttributes(SCHEMA_NAME_PROPERTY)
 
-                LOGGER.trace("\nAll attributes that was found:\n")
-                attributes.forEach { LOGGER.trace("${it.nodeName}='${it.nodeValue}'") }
-
                 attributes.forEach { attribute ->
                     val schemas = getSchemas(attribute.nodeValue)
                     schemas.forEach { schema ->
-                        val xsdPath = xsdMap[schema.value]
-                        checkNotNull(xsdPath) { "Cannot find xsd for current `${attribute.nodeName}` attribute: ${attribute.nodeValue}" }
+                        val xsdPath = checkNotNull(xsdMap[schema.value]) { "Cannot find xsd for current `${attribute.nodeName}` attribute: ${attribute.nodeValue}" }
 
                         val xsdFile = xsdPath.toFile()
                         val schemaFile = SCHEMA_FACTORY.newSchema(xsdFile) // is it worth for each time??
@@ -73,35 +69,28 @@ class XsdValidator(private val xsdMap: Map<String, Path>, private val dirtyValid
 
     }
 
-    private fun getSchemas(input: String): Map<String, String> {
-        val result = mutableMapOf<String, String>()
-
+    private fun getSchemas(input: String): Map<String, String> = mutableMapOf<String, String>().apply {
         input.split(" ").also {
             check(it.size%2==0) {"schemas must have pairs but had: ${it.size} count"}
             for (i in 0 until it.size-1 step 2) {
-                result[it[i]] = it[i+1]
+                this[it[i]] = it[i+1]
             }
         }
-
-        return result
     }
 
-    private fun Document.findAttributes(attributeName: String) : ArrayList<Node>{
-        val result = ArrayList<Node>()
+    private fun Document.findAttributes(attributeName: String) = mutableListOf<Node>().apply {
         for (i in 0 until documentElement.attributes.length) {
             val attr = documentElement.attributes.item(i)
             if (attr.nodeName.contains(attributeName)) {
-                result.add(attr)
+                this.add(attr)
             }
-
         }
-        result.addAllAttributes(documentElement.childNodes, attributeName)
-        return result
+        this.addAllAttributes(documentElement.childNodes, attributeName)
     }
 
-    private fun ArrayList<Node>.addAllAttributes(nodeList: NodeList, attributeName: String) {
-        nodeList.runCatching {
-            filter { it.nodeType == Node.ELEMENT_NODE }.forEach { node ->
+    private fun MutableList<Node>.addAllAttributes(nodeList: NodeList, attributeName: String) {
+        runCatching {
+            nodeList.filter { it.nodeType == Node.ELEMENT_NODE }.forEach { node ->
                 node.attributes.forEach {
                     if (it.nodeName.contains(attributeName)) {
                         this@addAllAttributes.add(it)

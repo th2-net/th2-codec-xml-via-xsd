@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2021 Exactpro (Exactpro Systems Limited)
+ * Copyright 2021-2022 Exactpro (Exactpro Systems Limited)
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -22,6 +22,7 @@ import com.exactpro.th2.common.grpc.RawMessage
 import com.exactpro.th2.common.grpc.Value
 import com.exactpro.th2.common.message.*
 import com.exactpro.th2.common.value.getMessage
+import com.exactpro.th2.common.value.toValue
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ArrayNode
@@ -29,64 +30,40 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 import com.fasterxml.jackson.databind.node.ValueNode
 import java.lang.IllegalArgumentException
 
-class Converter {
-    companion object {
-        private fun jsonToValue(node: JsonNode, name: String = "") : Value {
-            when (node) {
-                is ObjectNode -> {
-                    return Value.newBuilder().apply {
-                        messageValueBuilder.apply {
-                            messageType = name
-                            node.fieldNames().forEach {
-                                putFields(it, jsonToValue(node[it]))
-                            }
-                        }
-                    }.build()
-                }
-                is ArrayNode -> {
-                    return Value.newBuilder().apply {
-                        messageValueBuilder.apply {
-//                            messageType = name
-//                            listValue = listValueBuilder.addAllValues(node.toListValue().valuesList).build()
-                            val listValueBuilder = ListValue.newBuilder()
-                            node.forEach {
-                                listValueBuilder.addValues(jsonToValue(it))
-                            }
-                            listValue = listValueBuilder.build()
-                        }
-                    }.build()
-                }
-                is ValueNode -> {
-                    return Value.newBuilder().apply {
-                        simpleValue = node.textValue()
-                    }.build()
-                }
-                else -> error("Unknown node type ${node::class.java}")
-            }
+private fun JsonNode.toProtoValue(name: String = ""): Value = when (this) {
+    is ObjectNode -> message().also { builder ->
+        builder.messageType = name
+        fieldNames().forEach {
+            builder.putFields(it, this[it].toProtoValue())
         }
-
-        fun convertJsonToProto(node: JsonNode, type: String, rawMessage: RawMessage) : Message = jsonToValue(node, type).getMessage()!!
-            .toBuilder().apply {
-                parentEventId = rawMessage.parentEventId
-                metadataBuilder.also { msgMetadata ->
-                    rawMessage.metadata.also { rawMetadata ->
-                        msgMetadata.id = rawMetadata.id
-                        msgMetadata.timestamp = rawMetadata.timestamp
-                        msgMetadata.protocol = XmlPipelineCodecFactory.PROTOCOL
-                        msgMetadata.putAllProperties(rawMetadata.propertiesMap)
-                    }
-                }
-            }.build()
-            ?: throw IllegalArgumentException("JsonNode $node does not contain a message")
-
-        fun convertProtoToJson(message: Message) : String = ObjectMapper().createObjectNode().apply {
-            message.fieldsMap.forEach {
-                putField(it.key, it.value)
-            }
-        }.toString()
-
-
-
-
-    }
+    }.build().toValue()
+    is ArrayNode -> Value.newBuilder().also { builder ->
+        val listValueBuilder = ListValue.newBuilder()
+        forEach {
+            listValueBuilder.addValues(it.toProtoValue())
+        }
+        builder.listValue = listValueBuilder.build()
+    }.build()
+    is ValueNode -> Value.newBuilder().apply {
+        simpleValue = textValue()
+    }.build()
+    else -> error("Unknown node type ${this::class.java}")
 }
+
+fun JsonNode.toProto(type: String, rawMessage: RawMessage): Message = this.toProtoValue(type).getMessage()!!.toBuilder().also { builder ->
+    builder.parentEventId = rawMessage.parentEventId
+    builder.metadataBuilder.also { msgMetadata ->
+        rawMessage.metadata.also { rawMetadata ->
+            msgMetadata.id = rawMetadata.id
+            msgMetadata.timestamp = rawMetadata.timestamp
+            msgMetadata.protocol = XmlPipelineCodecFactory.PROTOCOL
+            msgMetadata.putAllProperties(rawMetadata.propertiesMap)
+        }
+    }
+}.build() ?: throw IllegalArgumentException("JsonNode $this does not contain a message")
+
+fun Message.toJson(): String = ObjectMapper().createObjectNode().apply {
+    fieldsMap.forEach {
+        putField(it.key, it.value)
+    }
+}.toString()

@@ -22,7 +22,7 @@ plugins {
 
 ext {
     sharedDir = file("${project.rootDir}/shared")
-    sailfishVersion = '3.2.1684'
+    sailfishVersion = '3.2.1752'
 }
 
 group = 'com.exactpro.th2'
@@ -68,9 +68,9 @@ jar {
 
 dependencies {
     api platform('com.exactpro.th2:bom:3.0.0')
-    implementation 'com.exactpro.th2:common:3.26.0'
-    implementation 'com.exactpro.th2:codec:4.1.1'
-    implementation 'com.exactpro.th2:sailfish-utils:3.9.0'
+    implementation 'com.exactpro.th2:common:3.31.5'
+    implementation 'com.exactpro.th2:codec:4.2.0'
+    implementation 'com.exactpro.th2:sailfish-utils:3.12.3'
 
     implementation "com.exactpro.sf:sailfish-core:${sailfishVersion}"
 
@@ -83,7 +83,7 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlin_version}"
     implementation "org.jetbrains.kotlin:kotlin-reflect:${kotlin_version}"
 
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.12.5'
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.13.1'
     implementation 'com.github.javadev:underscore:1.69'
     
     testImplementation "org.jetbrains.kotlin:kotlin-test-junit5:${kotlin_version}"

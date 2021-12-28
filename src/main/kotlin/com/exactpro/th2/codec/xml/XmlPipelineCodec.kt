@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2021 Exactpro (Exactpro Systems Limited)
+ * Copyright 2021-2022 Exactpro (Exactpro Systems Limited)
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -15,7 +15,6 @@
 
 package com.exactpro.th2.codec.xml
 
-import com.exactpro.th2.codec.CodecException
 import com.exactpro.th2.codec.DecodeException
 import com.exactpro.th2.codec.api.IPipelineCodec
 import com.exactpro.th2.common.grpc.AnyMessage
@@ -23,7 +22,8 @@ import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.MessageGroup
 import com.exactpro.th2.common.grpc.RawMessage
 import com.exactpro.th2.common.message.toJson
-import com.exactpro.th2.codec.xml.utils.Converter
+import com.exactpro.th2.codec.xml.utils.toJson
+import com.exactpro.th2.codec.xml.utils.toProto
 import com.exactpro.th2.codec.xml.xsd.XsdValidator
 import com.exactpro.th2.common.message.messageType
 import com.fasterxml.jackson.databind.JsonNode
@@ -36,11 +36,6 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.nio.charset.Charset
 import java.nio.file.Path
-import javax.xml.parsers.DocumentBuilder
-import javax.xml.parsers.DocumentBuilderFactory
-import javax.xml.parsers.ParserConfigurationException
-import javax.xml.xpath.XPath
-import javax.xml.xpath.XPathFactory
 
 
 open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdMap: Map<String, Path>)  : IPipelineCodec {
@@ -65,7 +60,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
 
     private fun encodeOne(message: Message): RawMessage {
 
-        val json = Converter.convertProtoToJson(message)
+        val json = message.toJson()
 
         val xmlString = U.jsonToXml(json)
 
@@ -122,23 +117,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
 
             check(jsonNode.size()==1) {"There more then one root messages after xml to Node process"}
 
-            val proto = Converter.convertJsonToProto(jsonNode, msgType, rawMessage)
-
-            /*return Message.newBuilder().apply {
-                messageType = msgType
-                parentEventId = rawMessage.parentEventId
-                metadataBuilder.also { msgMetadata ->
-                    rawMessage.metadata.also { rawMetadata ->
-                        msgMetadata.id = rawMetadata.id
-                        msgMetadata.timestamp = rawMetadata.timestamp
-                        msgMetadata.protocol = XmlPipelineCodecFactory.PROTOCOL
-                        msgMetadata.putAllProperties(rawMetadata.propertiesMap)
-                    }
-                }
-                addField("json", jsonString)
-            }.build()*/
-
-            return proto
+            return jsonNode.toProto(msgType, rawMessage)
         } catch (e: Exception) {
             throw DecodeException("Can not decode message. Can not parse XML. ${rawMessage.body.toStringUtf8()}", e)
         }
@@ -154,19 +133,6 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
 
     companion object {
         private val LOGGER: Logger = LoggerFactory.getLogger(XmlPipelineCodec::class.java)
-
         private val jsonMapper = JsonMapper()
-
-        private val X_PATH: ThreadLocal<XPath> = ThreadLocal.withInitial {
-            XPathFactory.newInstance().newXPath()
-        }
-
-        private val DOCUMENT_BUILDER: ThreadLocal<DocumentBuilder> = ThreadLocal.withInitial {
-            try {
-                DocumentBuilderFactory.newInstance().newDocumentBuilder()
-            } catch (e: ParserConfigurationException) {
-                throw CodecException("Error while initialization. Can not create DocumentBuilderFactory", e)
-            }
-        }
     }
 }
