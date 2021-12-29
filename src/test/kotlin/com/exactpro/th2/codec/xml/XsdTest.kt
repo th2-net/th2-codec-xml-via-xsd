@@ -35,17 +35,8 @@ class XsdTest : XmlTest() {
         val parentDirPath = Path.of("tmp").also {
             Files.createDirectories(it)
         }
-
         val zipBase64 = Thread.currentThread().contextClassLoader.getResource("XSDset.zip")!!
-
-//        File("xsd_dictionary.txt").apply {
-//            createNewFile()
-//            writeText(String(encodeFileToBase64Binary(zipBase64.file), StandardCharsets.UTF_8))
-//        }
-
         val xsdMap = ZipBase64Codec.decode(encodeFileToBase64Binary(zipBase64.file), parentDirPath.toFile())
-        assertContains(xsdMap, "cafm.001.001.01.xsd")
-        assertContains(xsdMap, "cafm.002.001.01.xsd")
         assertContains(xsdMap, "invoice.xsd")
         assertContains(xsdMap, "music_band.xsd")
         assertContains(xsdMap, "registration.xsd")

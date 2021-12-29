@@ -1,3 +1,6 @@
+# Xml via Xsd Codec
+![version](https://img.shields.io/badge/version-0.0.1-blue.svg)
+
 # How it works:
 
 Codec operates with [message groups](https://github.com/th2-net/th2-grpc-common/blob/f2794b2c5c8ae945e7500677439809db9c576c43/src/main/proto/th2_grpc_common/common.proto#L97)
@@ -9,31 +12,25 @@ and [parsed](https://github.com/th2-net/th2-grpc-common/blob/f2794b2c5c8ae945e75
 During encoding codec must replace each parsed message of supported [protocol](https://github.com/th2-net/th2-grpc-common/blob/f2794b2c5c8ae945e7500677439809db9c576c43/src/main/proto/th2_grpc_common/common.proto#L47)
 in a message group with a raw one by encoding parsed message's content
 
-> **NOTE**: codec can merge content of subsequent raw messages into a resulting raw message  
-> (e.g. when a codec encodes only a transport layer and its payload is already encoded)
-
 ## Decoding
 
 During decoding codec must replace each raw message in a message group with a parsed one by decoding raw message's content
 
-> **NOTE**: codec can replace raw message with a parsed message followed by a several raw messages
-> (e.g. when a codec decodes only a transport layer it can produce a parsed message for the transport layer and several raw messages for its payload)
+All xml messages must have schemaLocation due validation. Xsd schema will be found in archive using this parameter.
 
 # Configuration
 
-Codec has four types of connection: stream and general for encode and decode functions.
-
-* stream encode / decode connections works 24 / 7
-* general encode / decode connections works on demand
-
-Codec never mixes messages from the _stream_ and the _general_ connections
+Codec must be linked to dictionary. Dictionary is set of compressed xsd files. Zip archive must be converted to base64 and filled like a standard dictionary with converted data.\
+Error from validation process can be disabled for test purposes by `dirtyValidation` option.
 
 ### Configuration example
 
 * typePointer - Path to message type value for decode (null by default)
+* dirtyValidation - Disable/enable error during validation phase. If disabled all errors will be only visible in log  (false by default)
 
 ```yaml
 typePointer: /root/node/node2/type
+dirtyValidation: false
 ```
 
 For example:
@@ -42,11 +39,12 @@ For example:
 apiVersion: th2.exactpro.com/v1
 kind: Th2Box
 metadata:
-  name: codec
+  name: codec-xml-xsd
 spec:
   custom-config:
     codecSettings:
       typePointer: /root/node/node2/type
+      dirtyValidation: false
 ```
 
 ## Required pins
@@ -69,11 +67,15 @@ The first one is used to receive messages to decode/encode while the second one 
 apiVersion: th2.exactpro.com/v1
 kind: Th2Box
 metadata:
-  name: codec
+  name: codec-xml-xsd
 spec:
+  image-name: ghcr.io/th2-net/th2-codec-xml-via-xsd
+  image-version: #lastVersion
+  type: th2-codec
   custom-config:
     codecSettings:
       #typePointer: /root/node/node2/type
+      #dirtyValidation: false
   pins:
     # encoder
     - name: in_codec_encode
@@ -105,49 +107,10 @@ spec:
       attributes: ['general_decoder_out', 'parsed', 'publish']
 ```
 
-## Message routing
-
-Schema API allows configuring routing streams of messages via links between connections and filters on pins.
-Let's consider some examples of routing in codec box.
-
-### Split on 'publish' pins
-
-For example, you got a big source data stream, and you want to split them into some pins via session alias.
-You can declare multiple pins with attributes `['decoder_out', 'parsed', 'publish']` and filters instead of common pin or in addition to it.
-Every decoded messages will be direct to all declared pins and will send to MQ only if it passes the filter.
-
-```yaml
-apiVersion: th2.exactpro.com/v1
-kind: Th2Box
-metadata:
-  name: codec
-spec:
-  pins:
-    # decoder
-    - name: out_codec_decode_first_session_alias
-      connection-type: mq
-      attributes: ['decoder_out', 'parsed', 'publish', 'first_session_alias']
-      filters:
-        - metadata:
-            - field-name: session_alias
-              expected-value: first_session_alias
-              operation: EQUAL
-    - name: out_codec_decode_secon_session_alias
-      connection-type: mq
-      attributes: ['decoder_out', 'parsed', 'publish', 'second_session_alias']
-      filters:
-        - metadata:
-            - field-name: session_alias
-              expected-value: second_session_alias
-              operation: EQUAL
-```
-
-The filtering can also be applied for pins with `subscribe` attribute.
-
 ## Changelog
 
 ### v0.0.1
 
 #### Feature:
 
-* First realization using underscore library
+* First realization using underscore library as parser for json

@@ -28,7 +28,6 @@ import com.exactpro.th2.codec.xml.xsd.XsdValidator
 import com.exactpro.th2.common.message.messageType
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.json.JsonMapper
-import com.fasterxml.jackson.databind.node.ObjectNode
 import com.github.underscore.lodash.Json
 import com.github.underscore.lodash.U
 import com.google.protobuf.ByteString
@@ -121,14 +120,6 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
         } catch (e: Exception) {
             throw DecodeException("Can not decode message. Can not parse XML. ${rawMessage.body.toStringUtf8()}", e)
         }
-    }
-
-    private fun JsonNode.renameField(oldName: String, newName: String) : JsonNode {
-        (this as ObjectNode).apply {
-            set<JsonNode>(newName, get(oldName))
-            remove(oldName)
-        }
-        return this
     }
 
     companion object {

@@ -31,7 +31,7 @@ class XmlPipelineCodecFactory : IPipelineCodecFactory {
     lateinit var xsdMap: Map<String, Path>
 
     override fun init(dictionary: InputStream) {
-        xsdMap = decodeInputDictionary(dictionary, XSD_FOLDER)
+        xsdMap = decodeInputToDictionary(dictionary, XSD_FOLDER)
         if (xsdMap.isEmpty()) {
             throw IllegalArgumentException("No xsd were found from input dictionary!")
         }
@@ -46,7 +46,7 @@ class XmlPipelineCodecFactory : IPipelineCodecFactory {
         private val LOGGER = KotlinLogging.logger { }
         const val PROTOCOL = "XML"
 
-        fun decodeInputDictionary(dictionary: InputStream, parentDir: String): Map<String, Path> = dictionary.use {
+        fun decodeInputToDictionary(dictionary: InputStream, parentDir: String): Map<String, Path> = dictionary.use {
             val parentDirPath = Path.of(parentDir)
             Files.createDirectory(parentDirPath)
             val xsdDir = Files.createTempDirectory(parentDirPath, "")
