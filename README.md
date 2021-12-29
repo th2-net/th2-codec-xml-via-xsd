@@ -1,4 +1,4 @@
-# Xml via Xsd Codec
+# Codec Xml via Xsd
 ![version](https://img.shields.io/badge/version-0.0.1-blue.svg)
 
 # How it works:
