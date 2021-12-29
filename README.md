@@ -16,7 +16,7 @@ in a message group with a raw one by encoding parsed message's content
 
 During decoding codec must replace each raw message in a message group with a parsed one by decoding raw message's content.\
 Attributes from xml will be parsed as fields with '-' at start of field name, as example *"-attributeName":"attributeValue"*.\
-If field had attributes with value inside, value will be converted into field #text.\
+If field had attributes with value inside, value will be converted into field #text.
 
 As example: 
 
