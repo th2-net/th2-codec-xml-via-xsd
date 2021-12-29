@@ -102,10 +102,10 @@ spec:
   image-name: ghcr.io/th2-net/th2-codec-xml-via-xsd
   image-version: #lastVersion
   type: th2-codec
-  custom-config:
-    codecSettings:
-      #typePointer: /root/node/node2/type
-      #dirtyValidation: false
+#  custom-config:
+#    codecSettings:
+#      typePointer: /root/node/node2/type
+#      dirtyValidation: false
   pins:
     # encoder
     - name: in_codec_encode
