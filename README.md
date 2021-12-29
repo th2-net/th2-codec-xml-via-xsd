@@ -14,7 +14,37 @@ in a message group with a raw one by encoding parsed message's content
 
 ## Decoding
 
-During decoding codec must replace each raw message in a message group with a parsed one by decoding raw message's content
+During decoding codec must replace each raw message in a message group with a parsed one by decoding raw message's content.\
+Attributes from xml will be parsed as fields with '-' at start of field name, as example *"-attributeName":"attributeValue"*.\
+If field had attributes with value inside, value will be converted into field #text.\
+
+As example: 
+
+---
+```xml
+<test f="456">some data</test>
+``` 
+into 
+```kotlin
+addField("test", message().apply {
+    addFields("-f", "456")
+    addFields("#text", "some data")
+})
+```
+---
+
+and
+
+---
+
+```xml
+<h>A</h>
+``` 
+into
+```kotlin
+addField("h", "A")
+```
+---
 
 All xml messages must have schemaLocation due validation. Xsd schema will be found in archive using this parameter.
 
