@@ -57,6 +57,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
         ).build()
     }
 
+    //FIXME: move this check into the codec-core project
     private fun checkProtocol(msgProtocol: String?): Boolean {
         return msgProtocol.isNullOrEmpty() || msgProtocol == XmlPipelineCodecFactory.PROTOCOL
     }
