@@ -1,5 +1,5 @@
 # Codec Xml via Xsd
-![version](https://img.shields.io/badge/version-0.0.1-blue.svg)
+![version](https://img.shields.io/badge/version-0.0.2-blue.svg)
 
 # How it works:
 
@@ -9,12 +9,13 @@ and [parsed](https://github.com/th2-net/th2-grpc-common/blob/f2794b2c5c8ae945e75
 
 ## Encoding
 
-During encoding codec must replace each parsed message of supported [protocol](https://github.com/th2-net/th2-grpc-common/blob/f2794b2c5c8ae945e7500677439809db9c576c43/src/main/proto/th2_grpc_common/common.proto#L47)
-in a message group with a raw one by encoding parsed message's content
+During encoding codec must replace each parsed message of empty or supported [protocol](https://github.com/th2-net/th2-grpc-common/blob/f2794b2c5c8ae945e7500677439809db9c576c43/src/main/proto/th2_grpc_common/common.proto#L47)
+in a message group with a raw one by encoding parsed message's content.
 
 ## Decoding
 
-During decoding codec must replace each raw message in a message group with a parsed one by decoding raw message's content.\
+During decoding codec must replace each raw message of empty or supported [protocol](https://github.com/th2-net/th2-grpc-common/blob/f2794b2c5c8ae945e7500677439809db9c576c43/src/main/proto/th2_grpc_common/common.proto#L54)
+in a message group with a parsed one by decoding raw message's content.\
 Attributes from xml will be parsed as fields with '-' at start of field name, as example *"-attributeName":"attributeValue"*.\
 If field had attributes with value inside, value will be converted into field #text.
 
@@ -138,6 +139,12 @@ spec:
 ```
 
 ## Changelog
+
+### v0.0.2
+
+#### Feature:
+
+* Check message protocol when decode as well as when encode
 
 ### v0.0.1
 
