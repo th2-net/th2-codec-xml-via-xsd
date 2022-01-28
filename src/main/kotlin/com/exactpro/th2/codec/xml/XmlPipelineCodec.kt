@@ -50,11 +50,16 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
 
         return MessageGroup.newBuilder().addAllMessages(
             messages.map { anyMsg ->
-                if (anyMsg.hasMessage() && anyMsg.message.metadata.protocol.let { msgProtocol -> msgProtocol.isNullOrEmpty() || msgProtocol == XmlPipelineCodecFactory.PROTOCOL })
+                if (anyMsg.hasMessage() && checkProtocol(anyMsg.message.metadata.protocol))
                     AnyMessage.newBuilder().setRawMessage(encodeOne(anyMsg.message)).build()
                 else anyMsg
             }
         ).build()
+    }
+
+    //FIXME: move this check into the codec-core project
+    private fun checkProtocol(msgProtocol: String?): Boolean {
+        return msgProtocol.isNullOrEmpty() || msgProtocol == XmlPipelineCodecFactory.PROTOCOL
     }
 
     private fun encodeOne(message: Message): RawMessage {
@@ -85,7 +90,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
 
         return MessageGroup.newBuilder().apply {
             messages.forEach { input ->
-                if (input.hasRawMessage())
+                if (input.hasRawMessage() && checkProtocol(input.rawMessage.metadata.protocol))
                     try {
                         addMessages(AnyMessage.newBuilder().setMessage(decodeOne(input.rawMessage)).build())
                     } catch (e: Exception) {
