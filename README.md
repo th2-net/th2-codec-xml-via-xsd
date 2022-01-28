@@ -1,5 +1,5 @@
 # Codec Xml via Xsd
-![version](https://img.shields.io/badge/version-0.0.1-blue.svg)
+![version](https://img.shields.io/badge/version-0.0.2-blue.svg)
 
 # How it works:
 
