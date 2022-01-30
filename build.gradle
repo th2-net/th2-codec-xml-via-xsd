@@ -22,7 +22,7 @@ plugins {
 
 ext {
     sharedDir = file("${project.rootDir}/shared")
-    sailfishVersion = '3.2.1752'
+    sailfishVersion = '3.3.1'
 }
 
 group = 'com.exactpro.th2'
@@ -67,8 +67,8 @@ jar {
 }
 
 dependencies {
-    api platform('com.exactpro.th2:bom:3.1.0')
-    implementation 'com.exactpro.th2:common:3.31.5'
+    api platform('com.exactpro.th2:bom:4.0.2')
+    implementation 'com.exactpro.th2:common:3.42.0'
     implementation 'com.exactpro.th2:codec:4.7.2'
     implementation 'com.exactpro.th2:sailfish-utils:3.12.3'
 
