@@ -16,6 +16,7 @@
 package com.exactpro.th2.codec.xml
 
 import com.exactpro.th2.codec.api.IPipelineCodec
+import com.exactpro.th2.codec.api.IPipelineCodecContext
 import com.exactpro.th2.codec.api.IPipelineCodecFactory
 import com.exactpro.th2.codec.api.IPipelineCodecSettings
 import com.exactpro.th2.codec.xml.utils.ZipBase64Codec
@@ -35,6 +36,11 @@ class XmlPipelineCodecFactory : IPipelineCodecFactory {
         if (xsdMap.isEmpty()) {
             throw IllegalArgumentException("No xsd were found from input dictionary!")
         }
+    }
+
+    override fun init(pipelineCodecContext: IPipelineCodecContext) {
+        LOGGER.info { "Dictionary folder ${pipelineCodecContext.getDictionaryAliases().joinToString(",")}" }
+        xsdMap = emptyMap()
     }
 
     override fun create(settings: IPipelineCodecSettings?): IPipelineCodec {
