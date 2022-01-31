@@ -39,7 +39,8 @@ class XmlPipelineCodecFactory : IPipelineCodecFactory {
     }
 
     override fun init(pipelineCodecContext: IPipelineCodecContext) {
-        LOGGER.info { "Dictionary folder ${pipelineCodecContext.getDictionaryAliases().joinToString(",")}" }
+        val aliases = pipelineCodecContext.getDictionaryAliases()
+        LOGGER.info { "Dictionary folder (size: ${aliases.size}) - ${aliases.joinToString(",")}." }
         xsdMap = emptyMap()
     }
 
