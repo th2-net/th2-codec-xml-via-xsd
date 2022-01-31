@@ -69,7 +69,7 @@ jar {
 dependencies {
     api platform('com.exactpro.th2:bom:3.1.0')
     implementation 'com.exactpro.th2:common:3.33.0-th2-2422-1768677066-SNAPSHOT'
-    implementation 'com.exactpro.th2:codec:4.5.0-th2-2929-1768697681-SNAPSHOT'
+    implementation 'com.exactpro.th2:codec:4.5.0-th2-2929-1772203133-SNAPSHOT'
     implementation 'com.exactpro.th2:sailfish-utils:3.12.3'
 
     implementation "com.exactpro.sf:sailfish-core:${sailfishVersion}"
