@@ -28,6 +28,7 @@ import com.exactpro.th2.codec.xml.xsd.XsdValidator
 import com.exactpro.th2.common.message.messageType
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.json.JsonMapper
+import com.fasterxml.jackson.databind.node.ObjectNode
 import com.github.underscore.lodash.Json
 import com.github.underscore.lodash.U
 import com.google.protobuf.ByteString
@@ -112,14 +113,20 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
 
             val jsonNode: JsonNode = jsonMapper.readTree(jsonString)
 
-            check(jsonNode.size()==1) {"There was more than one root node in processed xml, result json have ${jsonNode.size()}"}
+            when {
+                jsonNode.size() == 1 -> Unit
+                jsonNode.size() == 2 && jsonNode.get("#omit-xml-declaration")?.asText() == "yes"  -> if (settings.expectsDeclaration) {
+                    error("Expecting declaration inside xml data")
+                } else {
+                    (jsonNode as ObjectNode).remove("#omit-xml-declaration")
+                }
+                else -> error("There was more than one root node in processed xml, result json have ${jsonNode.size()}")
+            }
 
             val msgType: String = settings.typePointer?.let {
                 val typeNode = jsonNode.at(it)
                 typeNode.asText()
             } ?: jsonNode.fieldNames().next()
-
-            check(jsonNode.size()==1) {"There more then one root messages after xml to Node process"}
 
             return jsonNode.toProto(msgType, rawMessage)
         } catch (e: Exception) {
