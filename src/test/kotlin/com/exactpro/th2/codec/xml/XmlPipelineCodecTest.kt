@@ -83,13 +83,19 @@ class XmlPipelineCodecTest : XmlTest() {
 
     @Test
     fun `test validation of xml declaration`() {
+        val xmlString = """
+            <Msg>
+                <Document>123</Document> 
+            </Msg>
+            """
+
         val withoutValidationCodec = XmlPipelineCodec(XmlPipelineCodecSettings(expectsDeclaration = false), mapOf())
 
         val xml = MessageGroup.newBuilder()
             .addMessages(AnyMessage.newBuilder().setRawMessage(RawMessage.newBuilder().apply {
                 metadataBuilder.protocol = "XML"
                 metadataBuilder.idBuilder.connectionIdBuilder.sessionAlias = "test_session_alias"
-                body = ByteString.copyFromUtf8("""<BizMsg> <Document> 123 </Document> </BizMsg>""".trimIndent())
+                body = ByteString.copyFromUtf8(xmlString.trimIndent())
             }))
             .build()
 
