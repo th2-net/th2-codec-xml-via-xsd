@@ -26,11 +26,8 @@ import com.exactpro.th2.codec.xml.utils.toJson
 import com.exactpro.th2.codec.xml.utils.toProto
 import com.exactpro.th2.codec.xml.xsd.XsdValidator
 import com.exactpro.th2.common.message.messageType
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.json.JsonMapper
-import com.fasterxml.jackson.databind.node.ObjectNode
-import com.github.underscore.lodash.Json
 import com.github.underscore.lodash.U
+import com.github.underscore.lodash.Xml
 import com.google.protobuf.ByteString
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -40,6 +37,7 @@ import java.nio.file.Path
 
 open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdMap: Map<String, Path>)  : IPipelineCodec {
 
+    private val pointer = settings.typePointer?.split("/")?.filterNot { it.isBlank() }
     private var xmlCharset: Charset = Charsets.UTF_8
     private val validator = XsdValidator(xsdMap, settings.dirtyValidation)
 
@@ -109,33 +107,42 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
             validator.validate(rawMessage.body.toByteArray())
             LOGGER.info("Validation of incoming raw message complete: ${rawMessage.metadata.idOrBuilder}")
             val xmlString = rawMessage.body.toStringUtf8()
-            val jsonString = U.xmlToJson(xmlString, Json.JsonStringBuilder.Step.COMPACT, null )
-
-            val jsonNode: JsonNode = jsonMapper.readTree(jsonString)
+            @Suppress("UNCHECKED_CAST")
+            val map = Xml.fromXml(xmlString) as LinkedHashMap<String, *>
 
             when {
-                jsonNode.size() == 1 -> Unit
-                jsonNode.size() == 2 && jsonNode.get("#omit-xml-declaration")?.asText() == "yes"  -> if (settings.expectsDeclaration) {
+                map.size == 1 -> Unit
+                map.size == 2 && map["#omit-xml-declaration"] == "yes"  -> if (settings.expectsDeclaration) {
                     error("Expecting declaration inside xml data")
                 } else {
-                    (jsonNode as ObjectNode).remove("#omit-xml-declaration")
+                    map.remove("#omit-xml-declaration")
                 }
-                else -> error("There was more than one root node in processed xml, result json have ${jsonNode.size()}")
+                else -> error("There was more than one root node in processed xml, result json have ${map.size}")
             }
 
-            val msgType: String = settings.typePointer?.let {
-                val typeNode = jsonNode.at(it)
-                typeNode.asText()
-            } ?: jsonNode.fieldNames().next()
 
-            return jsonNode.toProto(msgType, rawMessage)
+            val msgType: String = pointer?.let { map.getNode<String>(it) } ?: map.keys.first()
+
+            return map.toProto(msgType, rawMessage)
         } catch (e: Exception) {
             throw DecodeException("Can not decode message. Can not parse XML. ${rawMessage.body.toStringUtf8()}", e)
         }
     }
 
+    private inline fun <reified T>LinkedHashMap<*,*>.getNode(pointer: List<String>): T {
+        val steps = pointer.toMutableList()
+        var current = this[steps[0]]
+        for (i in 1 until steps.size) {
+            if (current == null) {
+                error("Can not find element by name: ${steps[i]} in path: $pointer")
+            }
+            current = (current as Map<*, *>)[steps[i]]
+        }
+        return current as T
+    }
+
+
     companion object {
         private val LOGGER: Logger = LoggerFactory.getLogger(XmlPipelineCodec::class.java)
-        private val jsonMapper = JsonMapper()
     }
 }
