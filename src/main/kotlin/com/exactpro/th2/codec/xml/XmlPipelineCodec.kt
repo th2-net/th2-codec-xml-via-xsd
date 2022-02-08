@@ -18,21 +18,20 @@ package com.exactpro.th2.codec.xml
 import com.exactpro.th2.codec.DecodeException
 import com.exactpro.th2.codec.api.IPipelineCodec
 import com.exactpro.th2.codec.xml.utils.toMap
+import com.exactpro.th2.codec.xml.utils.toProto
+import com.exactpro.th2.codec.xml.xsd.XsdValidator
 import com.exactpro.th2.common.grpc.AnyMessage
 import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.MessageGroup
 import com.exactpro.th2.common.grpc.RawMessage
-import com.exactpro.th2.common.message.toJson
-import com.exactpro.th2.codec.xml.utils.toProto
-import com.exactpro.th2.codec.xml.xsd.XsdValidator
 import com.exactpro.th2.common.message.messageType
+import com.exactpro.th2.common.message.toJson
 import com.github.underscore.lodash.Xml
 import com.google.protobuf.ByteString
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.nio.charset.Charset
 import java.nio.file.Path
-
 
 open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdMap: Map<String, Path>)  : IPipelineCodec {
 
@@ -106,11 +105,17 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
             LOGGER.debug("Validation of incoming raw message complete: ${rawMessage.metadata.idOrBuilder}")
             val xmlString = rawMessage.body.toStringUtf8()
             @Suppress("UNCHECKED_CAST")
-            val map = Xml.fromXml(xmlString) as LinkedHashMap<String, *>
+            val map = Xml.fromXml(xmlString) as MutableMap<String, *>
+
+            LOGGER.debug("Result of the 'Xml.fromXml' method is ${map.keys} for $xmlString")
+            map.apply {
+                remove(STANDALONE)
+                remove(ENCODING)
+            }
 
             when {
                 map.size == 1 -> Unit
-                map.size == 2 && map["#omit-xml-declaration"] == "yes"  -> if (settings.expectsDeclaration) {
+                map.size == 2 && map[OMITXMLDECLARATION] == "yes"  -> if (settings.expectsDeclaration) {
                     // U library will tell by this option is there no declaration
                     error("Expecting declaration inside xml data")
                 } else {
@@ -128,7 +133,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
         }
     }
 
-    private inline fun <reified T>LinkedHashMap<*,*>.getNode(pointer: List<String>): T {
+    private inline fun <reified T>Map<*,*>.getNode(pointer: List<String>): T {
         val steps = pointer.toMutableList()
         var current = this[steps[0]]
         for (i in 1 until steps.size) {
@@ -143,5 +148,18 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
 
     companion object {
         private val LOGGER: Logger = LoggerFactory.getLogger(XmlPipelineCodec::class.java)
+
+        /**
+         * The constant from [Xml.OMITXMLDECLARATION]
+         */
+        private const val OMITXMLDECLARATION = "#omit-xml-declaration"
+        /**
+         * The constant from [Xml.ENCODING]
+         */
+        private const val ENCODING = "#encoding"
+        /**
+         * The constant from [Xml.STANDALONE]
+         */
+        private const val STANDALONE = "#standalone"
     }
 }
