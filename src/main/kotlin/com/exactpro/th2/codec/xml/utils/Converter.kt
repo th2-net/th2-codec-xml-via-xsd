@@ -24,7 +24,6 @@ import com.exactpro.th2.common.message.message
 import com.exactpro.th2.common.message.messageType
 import com.exactpro.th2.common.value.getMessage
 import com.exactpro.th2.common.value.toValue
-import com.fasterxml.jackson.databind.ObjectMapper
 import java.lang.IllegalArgumentException
 
 @Suppress("UNCHECKED_CAST")
@@ -66,9 +65,3 @@ fun Map<String, *>.toProto(type: String, rawMessage: RawMessage): Message = this
         }
     }
 }.build() ?: throw IllegalArgumentException("JsonNode $this does not contain a message")
-
-fun Message.toJson(): String = ObjectMapper().createObjectNode().apply {
-    fieldsMap.forEach {
-        putField(it.key, it.value)
-    }
-}.toString()

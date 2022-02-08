@@ -17,16 +17,15 @@ package com.exactpro.th2.codec.xml
 
 import com.exactpro.th2.codec.DecodeException
 import com.exactpro.th2.codec.api.IPipelineCodec
+import com.exactpro.th2.codec.xml.utils.toMap
 import com.exactpro.th2.common.grpc.AnyMessage
 import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.MessageGroup
 import com.exactpro.th2.common.grpc.RawMessage
 import com.exactpro.th2.common.message.toJson
-import com.exactpro.th2.codec.xml.utils.toJson
 import com.exactpro.th2.codec.xml.utils.toProto
 import com.exactpro.th2.codec.xml.xsd.XsdValidator
 import com.exactpro.th2.common.message.messageType
-import com.github.underscore.lodash.U
 import com.github.underscore.lodash.Xml
 import com.google.protobuf.ByteString
 import org.slf4j.Logger
@@ -63,9 +62,8 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
 
     private fun encodeOne(message: Message): RawMessage {
 
-        val json = message.toJson()
-
-        val xmlString = U.jsonToXml(json)
+        val map = message.toMap()
+        val xmlString = Xml.toXml(map)
 
         validator.validate(xmlString.toByteArray())
         LOGGER.info("Validation of incoming parsed message complete: ${message.messageType}")
@@ -113,6 +111,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
             when {
                 map.size == 1 -> Unit
                 map.size == 2 && map["#omit-xml-declaration"] == "yes"  -> if (settings.expectsDeclaration) {
+                    // U library will tell by this option is there no declaration
                     error("Expecting declaration inside xml data")
                 } else {
                     map.remove("#omit-xml-declaration")
