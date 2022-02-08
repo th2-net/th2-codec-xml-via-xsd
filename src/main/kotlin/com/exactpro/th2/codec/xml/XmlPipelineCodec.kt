@@ -122,15 +122,6 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
                 }
             }
 
-            when(map[STANDALONE]) {
-                YES, NO -> map.remove(STANDALONE)
-            }
-
-            when(map[ENCODING]) {
-                null -> Unit
-                else -> map.remove(ENCODING)
-            }
-
             if (map.size > 1) {
                 error("There was more than one root node in processed xml, result json have [${map.size}]: ${map.keys.joinToString(", ")}")
             }
@@ -157,17 +148,14 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
 
 
     companion object {
-        private const val YES = "yes"
-        private const val NO = "no"
-        private const val STANDALONE = "#standalone"
-        private const val ENCODING = "#encoding"
-        private const val OMIT_XML_DECLARATION = "#omit-xml-declaration"
         private val LOGGER: Logger = LoggerFactory.getLogger(XmlPipelineCodec::class.java)
+
+        private const val NO = "no"
 
         /**
          * The constant from [Xml.OMITXMLDECLARATION]
          */
-        private const val OMITXMLDECLARATION = "#omit-xml-declaration"
+        private const val OMIT_XML_DECLARATION = "#omit-xml-declaration"
         /**
          * The constant from [Xml.ENCODING]
          */
