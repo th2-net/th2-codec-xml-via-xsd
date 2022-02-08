@@ -147,6 +147,7 @@ spec:
 #### Feature:
 
 * Declaration check option
+* Json step as converter was removed [ Message -> **Json** -> Map -> XmlString -> Xml ] to  [ Message -> Map -> XmlString -> Xml ] 
 
 ### v0.0.2
 
