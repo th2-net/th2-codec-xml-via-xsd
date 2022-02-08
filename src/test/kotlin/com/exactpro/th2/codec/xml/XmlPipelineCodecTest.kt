@@ -110,4 +110,53 @@ class XmlPipelineCodecTest : XmlTest() {
         }
     }
 
+    @Test
+    fun `test validation of xml declaration with standalone and encoding`() {
+        val xmlString = """<?xml version="1.0" encoding="iso-8859-1" standalone="yes"?>
+            <Msg>
+                <Document>123</Document> 
+            </Msg>
+            """
+
+        val withoutValidationCodec = XmlPipelineCodec(XmlPipelineCodecSettings(expectsDeclaration = true), mapOf())
+
+        val xml = MessageGroup.newBuilder()
+            .addMessages(AnyMessage.newBuilder().setRawMessage(RawMessage.newBuilder().apply {
+                metadataBuilder.protocol = "XML"
+                metadataBuilder.idBuilder.connectionIdBuilder.sessionAlias = "test_session_alias"
+                body = ByteString.copyFromUtf8(xmlString.trimIndent())
+            }))
+            .build()
+
+        Assertions.assertDoesNotThrow {
+            withoutValidationCodec.decode(xml)
+        }
+    }
+
+    @Test
+    fun `test validation of xml with few root elements`() {
+        val xmlString = """<?xml version="1.0" encoding="iso-8859-1" standalone="yes"?>
+            <Msg>
+                <Document>123</Document> 
+            </Msg>
+            <Header>
+                1234
+            </Header>
+            """
+
+        val withoutValidationCodec = XmlPipelineCodec(XmlPipelineCodecSettings(expectsDeclaration = false), mapOf())
+
+        val xml = MessageGroup.newBuilder()
+            .addMessages(AnyMessage.newBuilder().setRawMessage(RawMessage.newBuilder().apply {
+                metadataBuilder.protocol = "XML"
+                metadataBuilder.idBuilder.connectionIdBuilder.sessionAlias = "test_session_alias"
+                body = ByteString.copyFromUtf8(xmlString.trimIndent())
+            }))
+            .build()
+
+        Assertions.assertThrows(IllegalStateException::class.java) {
+            withoutValidationCodec.decode(xml)
+        }
+    }
+
 }
