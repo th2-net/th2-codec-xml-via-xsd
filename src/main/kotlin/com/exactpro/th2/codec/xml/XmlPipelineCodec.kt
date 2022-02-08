@@ -113,17 +113,18 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
                 remove(ENCODING)
             }
 
-            when {
-                map.size == 1 -> Unit
-                map.size == 2 && map[OMITXMLDECLARATION] == "yes"  -> if (settings.expectsDeclaration) {
-                    // U library will tell by this option is there no declaration
-                    error("Expecting declaration inside xml data")
-                } else {
+            if (map.contains(OMIT_XML_DECLARATION)) {
+                // U library will tell by this option is there no declaration
+                if (!settings.expectsDeclaration || map[OMIT_XML_DECLARATION] == NO) {
                     map.remove("#omit-xml-declaration")
+                } else {
+                    error("Expecting declaration inside xml data")
                 }
-                else -> error("There was more than one root node in processed xml, result json have ${map.size}")
             }
 
+            if (map.size > 1) {
+                error("There was more than one root node in processed xml, result json have [${map.size}]: ${map.keys.joinToString(", ")}")
+            }
 
             val msgType: String = pointer?.let { map.getNode<String>(it) } ?: map.keys.first()
 
@@ -149,10 +150,12 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
     companion object {
         private val LOGGER: Logger = LoggerFactory.getLogger(XmlPipelineCodec::class.java)
 
+        private const val NO = "no"
+
         /**
          * The constant from [Xml.OMITXMLDECLARATION]
          */
-        private const val OMITXMLDECLARATION = "#omit-xml-declaration"
+        private const val OMIT_XML_DECLARATION = "#omit-xml-declaration"
         /**
          * The constant from [Xml.ENCODING]
          */

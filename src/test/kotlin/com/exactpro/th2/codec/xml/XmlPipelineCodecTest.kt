@@ -107,6 +107,24 @@ class XmlPipelineCodecTest : XmlTest() {
         Assertions.assertThrows(IllegalStateException::class.java) { withValidationCodec.decode(xml) }
     }
 
+    @Test
+    fun `test validation of xml with few root elements`() {
+        val withoutValidationCodec = XmlPipelineCodec(XmlPipelineCodecSettings(expectsDeclaration = false), mapOf())
+
+        val xml = createMessageGroup("""<?xml version="1.0" encoding="iso-8859-1" standalone="yes"?>
+            <Msg>
+                <Document>123</Document> 
+            </Msg>
+            <Header>
+                1234
+            </Header>
+            """.trimIndent())
+
+        Assertions.assertThrows(IllegalStateException::class.java) {
+            withoutValidationCodec.decode(xml)
+        }
+    }
+
     private fun createMessageGroup(xmlString: String) = MessageGroup.newBuilder()
         .addMessages(AnyMessage.newBuilder().setRawMessage(RawMessage.newBuilder().apply {
             metadataBuilder.protocol = "XML"
