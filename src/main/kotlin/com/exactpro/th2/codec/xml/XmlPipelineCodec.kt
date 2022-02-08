@@ -17,19 +17,16 @@ package com.exactpro.th2.codec.xml
 
 import com.exactpro.th2.codec.DecodeException
 import com.exactpro.th2.codec.api.IPipelineCodec
+import com.exactpro.th2.codec.xml.utils.toMap
 import com.exactpro.th2.common.grpc.AnyMessage
 import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.MessageGroup
 import com.exactpro.th2.common.grpc.RawMessage
 import com.exactpro.th2.common.message.toJson
-import com.exactpro.th2.codec.xml.utils.toJson
 import com.exactpro.th2.codec.xml.utils.toProto
 import com.exactpro.th2.codec.xml.xsd.XsdValidator
 import com.exactpro.th2.common.message.messageType
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.json.JsonMapper
-import com.github.underscore.lodash.Json
-import com.github.underscore.lodash.U
+import com.github.underscore.lodash.Xml
 import com.google.protobuf.ByteString
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -39,6 +36,7 @@ import java.nio.file.Path
 
 open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdMap: Map<String, Path>)  : IPipelineCodec {
 
+    private val pointer = settings.typePointer?.split("/")?.filterNot { it.isBlank() }
     private var xmlCharset: Charset = Charsets.UTF_8
     private val validator = XsdValidator(xsdMap, settings.dirtyValidation)
 
@@ -64,9 +62,8 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
 
     private fun encodeOne(message: Message): RawMessage {
 
-        val json = message.toJson()
-
-        val xmlString = U.jsonToXml(json)
+        val map = message.toMap()
+        val xmlString = Xml.toXml(map)
 
         validator.validate(xmlString.toByteArray())
         LOGGER.debug("Validation of incoming parsed message complete: ${message.messageType}")
@@ -108,27 +105,43 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
             validator.validate(rawMessage.body.toByteArray())
             LOGGER.debug("Validation of incoming raw message complete: ${rawMessage.metadata.idOrBuilder}")
             val xmlString = rawMessage.body.toStringUtf8()
-            val jsonString = U.xmlToJson(xmlString, Json.JsonStringBuilder.Step.COMPACT, null )
+            @Suppress("UNCHECKED_CAST")
+            val map = Xml.fromXml(xmlString) as LinkedHashMap<String, *>
 
-            val jsonNode: JsonNode = jsonMapper.readTree(jsonString)
+            when {
+                map.size == 1 -> Unit
+                map.size == 2 && map["#omit-xml-declaration"] == "yes"  -> if (settings.expectsDeclaration) {
+                    // U library will tell by this option is there no declaration
+                    error("Expecting declaration inside xml data")
+                } else {
+                    map.remove("#omit-xml-declaration")
+                }
+                else -> error("There was more than one root node in processed xml, result json have ${map.size}")
+            }
 
-            check(jsonNode.size()==1) {"There was more than one root node in processed xml, result json have ${jsonNode.size()}"}
 
-            val msgType: String = settings.typePointer?.let {
-                val typeNode = jsonNode.at(it)
-                typeNode.asText()
-            } ?: jsonNode.fieldNames().next()
+            val msgType: String = pointer?.let { map.getNode<String>(it) } ?: map.keys.first()
 
-            check(jsonNode.size()==1) {"There more then one root messages after xml to Node process"}
-
-            return jsonNode.toProto(msgType, rawMessage)
+            return map.toProto(msgType, rawMessage)
         } catch (e: Exception) {
             throw DecodeException("Can not decode message. Can not parse XML. ${rawMessage.body.toStringUtf8()}", e)
         }
     }
 
+    private inline fun <reified T>LinkedHashMap<*,*>.getNode(pointer: List<String>): T {
+        val steps = pointer.toMutableList()
+        var current = this[steps[0]]
+        for (i in 1 until steps.size) {
+            if (current == null) {
+                error("Can not find element by name: ${steps[i]} in path: $pointer")
+            }
+            current = (current as Map<*, *>)[steps[i]]
+        }
+        return current as T
+    }
+
+
     companion object {
         private val LOGGER: Logger = LoggerFactory.getLogger(XmlPipelineCodec::class.java)
-        private val jsonMapper = JsonMapper()
     }
 }

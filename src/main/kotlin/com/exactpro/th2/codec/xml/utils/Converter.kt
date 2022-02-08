@@ -16,41 +16,45 @@
 package com.exactpro.th2.codec.xml.utils
 
 import com.exactpro.th2.codec.xml.XmlPipelineCodecFactory
-import com.exactpro.th2.common.grpc.ListValue
 import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.RawMessage
 import com.exactpro.th2.common.grpc.Value
-import com.exactpro.th2.common.message.*
+import com.exactpro.th2.common.message.addField
+import com.exactpro.th2.common.message.message
+import com.exactpro.th2.common.message.messageType
 import com.exactpro.th2.common.value.getMessage
 import com.exactpro.th2.common.value.toValue
-import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.node.ArrayNode
-import com.fasterxml.jackson.databind.node.ObjectNode
-import com.fasterxml.jackson.databind.node.ValueNode
 import java.lang.IllegalArgumentException
 
-private fun JsonNode.toProtoValue(name: String = ""): Value = when (this) {
-    is ObjectNode -> message().also { builder ->
+@Suppress("UNCHECKED_CAST")
+private fun Map<String, *>.toProtoValue(name: String = ""): Value {
+    val message = message().also { builder ->
         builder.messageType = name
-        fieldNames().forEach {
-            builder.putFields(it, this[it].toProtoValue())
+    }
+    this.forEach {
+        when(it.value) {
+            is Map<*,*> -> {
+                message.addField(it.key, (it.value as Map<String, *>).toProtoValue())
+            }
+            is String -> {
+                message.addField(it.key, it.value)
+            }
+            is ArrayList<*> -> {
+                when((it.value as ArrayList<*>)[0]) {
+                    is Map<*,*> -> message.addField(it.key, (it.value as ArrayList<*>).map { arrayElement -> (arrayElement as Map<String,String>).toProtoValue() }.toValue())
+                    else -> message.addField(it.key, (it.value as ArrayList<*>).toValue())
+                }
+            }
+            null -> Unit
+            else -> {
+                error("Unsupported type of value: ${it.value!!::class.simpleName}")
+            }
         }
-    }.build().toValue()
-    is ArrayNode -> Value.newBuilder().also { builder ->
-        val listValueBuilder = ListValue.newBuilder()
-        forEach {
-            listValueBuilder.addValues(it.toProtoValue())
-        }
-        builder.listValue = listValueBuilder.build()
-    }.build()
-    is ValueNode -> Value.newBuilder().apply {
-        simpleValue = textValue()
-    }.build()
-    else -> error("Unknown node type ${this::class.java}")
+    }
+    return message.build().toValue()
 }
 
-fun JsonNode.toProto(type: String, rawMessage: RawMessage): Message = this.toProtoValue(type).getMessage()!!.toBuilder().also { builder ->
+fun Map<String, *>.toProto(type: String, rawMessage: RawMessage): Message = this.toProtoValue(type).getMessage()!!.toBuilder().also { builder ->
     builder.parentEventId = rawMessage.parentEventId
     builder.metadataBuilder.also { msgMetadata ->
         rawMessage.metadata.also { rawMetadata ->
@@ -61,9 +65,3 @@ fun JsonNode.toProto(type: String, rawMessage: RawMessage): Message = this.toPro
         }
     }
 }.build() ?: throw IllegalArgumentException("JsonNode $this does not contain a message")
-
-fun Message.toJson(): String = ObjectMapper().createObjectNode().apply {
-    fieldsMap.forEach {
-        putField(it.key, it.value)
-    }
-}.toString()

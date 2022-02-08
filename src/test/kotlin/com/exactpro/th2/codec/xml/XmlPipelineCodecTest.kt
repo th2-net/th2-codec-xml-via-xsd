@@ -17,9 +17,14 @@ package com.exactpro.th2.codec.xml
 
 import com.exactpro.th2.codec.xml.utils.XmlTest
 import com.exactpro.th2.codec.xml.utils.parsedMessage
+import com.exactpro.th2.common.grpc.AnyMessage
+import com.exactpro.th2.common.grpc.MessageGroup
+import com.exactpro.th2.common.grpc.RawMessage
 import com.exactpro.th2.common.message.addField
 import com.exactpro.th2.common.message.addFields
 import com.exactpro.th2.common.message.message
+import com.google.protobuf.ByteString
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 
 class XmlPipelineCodecTest : XmlTest() {
@@ -39,19 +44,14 @@ class XmlPipelineCodecTest : XmlTest() {
             </CommonFieldsA>
         """.trimIndent()
 
-        val msg = parsedMessage("CommonFieldsA").addFields(
-            "CommonFieldsA", message().apply {
-                addFields(
-                    "f", "123",
-                    "abc", message().apply {
-                        addField("ab", message().apply {
-                            addFields("a", "345", "b", "678")
-                        })
-                        addField("c", "90")
-                    }
-                )
-            }
-        )
+        val msg = parsedMessage("CommonFieldsA").addFields("CommonFieldsA", message().apply {
+            addFields("f", "123", "abc", message().apply {
+                addField("ab", message().apply {
+                    addFields("a", "345", "b", "678")
+                })
+                addField("c", "90")
+            })
+        })
         checkDecode(xml, msg)
     }
 
@@ -70,20 +70,44 @@ class XmlPipelineCodecTest : XmlTest() {
             </CommonFieldsA>
         """.trimIndent()
 
-        val msg = parsedMessage("CommonFieldsA").addFields(
-            "CommonFieldsA", message().apply {
-                addFields(
-                    "f", "123",
-                    "abc", message().apply {
-                        addField("ab", message().apply {
-                            addFields("a", "345", "b", "678")
-                        })
-                        addField("c", "90")
-                    }
-                )
-            }
-        )
+        val msg = parsedMessage("CommonFieldsA").addFields("CommonFieldsA", message().apply {
+            addFields("f", "123", "abc", message().apply {
+                addField("ab", message().apply {
+                    addFields("a", "345", "b", "678")
+                })
+                addField("c", "90")
+            })
+        })
         checkEncode(xml, msg)
+    }
+
+    @Test
+    fun `test validation of xml declaration`() {
+        val xmlString = """
+            <Msg>
+                <Document>123</Document> 
+            </Msg>
+            """
+
+        val withoutValidationCodec = XmlPipelineCodec(XmlPipelineCodecSettings(expectsDeclaration = false), mapOf())
+
+        val xml = MessageGroup.newBuilder()
+            .addMessages(AnyMessage.newBuilder().setRawMessage(RawMessage.newBuilder().apply {
+                metadataBuilder.protocol = "XML"
+                metadataBuilder.idBuilder.connectionIdBuilder.sessionAlias = "test_session_alias"
+                body = ByteString.copyFromUtf8(xmlString.trimIndent())
+            }))
+            .build()
+
+        Assertions.assertDoesNotThrow {
+            withoutValidationCodec.decode(xml)
+        }
+
+        val withValidationCodec = XmlPipelineCodec(XmlPipelineCodecSettings(expectsDeclaration = true), mapOf())
+
+        Assertions.assertThrows(IllegalStateException::class.java) {
+            withValidationCodec.decode(xml)
+        }
     }
 
 }
