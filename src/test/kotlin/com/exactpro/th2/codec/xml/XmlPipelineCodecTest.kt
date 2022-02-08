@@ -83,31 +83,28 @@ class XmlPipelineCodecTest : XmlTest() {
 
     @Test
     fun `test validation of xml declaration`() {
-        val xmlString = """
+        val withoutValidationCodec = XmlPipelineCodec(XmlPipelineCodecSettings(expectsDeclaration = false), mapOf())
+        val withValidationCodec = XmlPipelineCodec(XmlPipelineCodecSettings(expectsDeclaration = true), mapOf())
+
+        // Message with XML declaration
+        var xml: MessageGroup = createMessageGroup("""<?xml version="1.0" encoding="UTF-8" standalone="no"?>
             <Msg>
                 <Document>123</Document> 
             </Msg>
-            """
+            """.trimIndent())
 
-        val withoutValidationCodec = XmlPipelineCodec(XmlPipelineCodecSettings(expectsDeclaration = false), mapOf())
+        Assertions.assertDoesNotThrow { withoutValidationCodec.decode(xml) }
+        Assertions.assertDoesNotThrow { withValidationCodec.decode(xml) }
 
-        val xml = MessageGroup.newBuilder()
-            .addMessages(AnyMessage.newBuilder().setRawMessage(RawMessage.newBuilder().apply {
-                metadataBuilder.protocol = "XML"
-                metadataBuilder.idBuilder.connectionIdBuilder.sessionAlias = "test_session_alias"
-                body = ByteString.copyFromUtf8(xmlString.trimIndent())
-            }))
-            .build()
+        // Formatted message with XML declaration
+        xml = createMessageGroup("""
+            <Msg>
+                <Document>123</Document> 
+            </Msg>
+            """.trimIndent())
 
-        Assertions.assertDoesNotThrow {
-            withoutValidationCodec.decode(xml)
-        }
-
-        val withValidationCodec = XmlPipelineCodec(XmlPipelineCodecSettings(expectsDeclaration = true), mapOf())
-
-        Assertions.assertThrows(IllegalStateException::class.java) {
-            withValidationCodec.decode(xml)
-        }
+        Assertions.assertDoesNotThrow { withoutValidationCodec.decode(xml) }
+        Assertions.assertThrows(IllegalStateException::class.java) { withValidationCodec.decode(xml) }
     }
 
     @Test
@@ -158,5 +155,13 @@ class XmlPipelineCodecTest : XmlTest() {
             withoutValidationCodec.decode(xml)
         }
     }
+
+    private fun createMessageGroup(xmlString: String) = MessageGroup.newBuilder()
+        .addMessages(AnyMessage.newBuilder().setRawMessage(RawMessage.newBuilder().apply {
+            metadataBuilder.protocol = "XML"
+            metadataBuilder.idBuilder.connectionIdBuilder.sessionAlias = "test_session_alias"
+            body = ByteString.copyFromUtf8(xmlString)
+        }))
+        .build()
 
 }

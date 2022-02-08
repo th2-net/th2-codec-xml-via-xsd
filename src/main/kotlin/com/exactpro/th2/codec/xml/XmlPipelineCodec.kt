@@ -33,7 +33,6 @@ import org.slf4j.LoggerFactory
 import java.nio.charset.Charset
 import java.nio.file.Path
 
-
 open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdMap: Map<String, Path>)  : IPipelineCodec {
 
     private val pointer = settings.typePointer?.split("/")?.filterNot { it.isBlank() }
@@ -66,7 +65,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
         val xmlString = Xml.toXml(map)
 
         validator.validate(xmlString.toByteArray())
-        LOGGER.info("Validation of incoming parsed message complete: ${message.messageType}")
+        LOGGER.debug("Validation of incoming parsed message complete: ${message.messageType}")
 
         return RawMessage.newBuilder().apply {
             parentEventId = message.parentEventId
@@ -103,11 +102,16 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
     private fun decodeOne(rawMessage: RawMessage): Message {
         try {
             validator.validate(rawMessage.body.toByteArray())
-            LOGGER.info("Validation of incoming raw message complete: ${rawMessage.metadata.idOrBuilder}")
+            LOGGER.debug("Validation of incoming raw message complete: ${rawMessage.metadata.idOrBuilder}")
             val xmlString = rawMessage.body.toStringUtf8()
             @Suppress("UNCHECKED_CAST")
-            val map = Xml.fromXml(xmlString) as LinkedHashMap<String, *>
+            val map = Xml.fromXml(xmlString) as MutableMap<String, *>
 
+            LOGGER.debug("Result of the 'Xml.fromXml' method is ${map.keys} for $xmlString")
+            map.apply {
+                remove(STANDALONE)
+                remove(ENCODING)
+            }
 
             if (map.contains(OMIT_XML_DECLARATION)) {
                 // U library will tell by this option is there no declaration
@@ -139,7 +143,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
         }
     }
 
-    private inline fun <reified T>LinkedHashMap<*,*>.getNode(pointer: List<String>): T {
+    private inline fun <reified T>Map<*,*>.getNode(pointer: List<String>): T {
         val steps = pointer.toMutableList()
         var current = this[steps[0]]
         for (i in 1 until steps.size) {
@@ -159,5 +163,18 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
         private const val ENCODING = "#encoding"
         private const val OMIT_XML_DECLARATION = "#omit-xml-declaration"
         private val LOGGER: Logger = LoggerFactory.getLogger(XmlPipelineCodec::class.java)
+
+        /**
+         * The constant from [Xml.OMITXMLDECLARATION]
+         */
+        private const val OMITXMLDECLARATION = "#omit-xml-declaration"
+        /**
+         * The constant from [Xml.ENCODING]
+         */
+        private const val ENCODING = "#encoding"
+        /**
+         * The constant from [Xml.STANDALONE]
+         */
+        private const val STANDALONE = "#standalone"
     }
 }
