@@ -20,44 +20,68 @@ import com.exactpro.th2.codec.api.IPipelineCodecContext
 import com.exactpro.th2.codec.api.IPipelineCodecFactory
 import com.exactpro.th2.codec.api.IPipelineCodecSettings
 import com.exactpro.th2.codec.xml.utils.ZipBase64Codec
+import com.exactpro.th2.codec.xml.xsd.XsdErrorHandler
+import com.exactpro.th2.codec.xml.xsd.XsdValidator
 import mu.KotlinLogging
 import org.apache.commons.io.FileUtils
+import java.io.File
 import java.io.InputStream
-import java.nio.file.Files
 import java.nio.file.Path
+import javax.xml.XMLConstants
+import javax.xml.transform.Source
+import javax.xml.transform.stream.StreamSource
+import javax.xml.validation.Schema
+import javax.xml.validation.SchemaFactory
 
 class XmlPipelineCodecFactory : IPipelineCodecFactory {
     override val settingsClass: Class<out IPipelineCodecSettings> = XmlPipelineCodecSettings::class.java
     override val protocol: String = PROTOCOL
-    lateinit var xsdMap: Map<String, Path>
+    lateinit var xsdMap: Map<String, Schema>
 
+    @Deprecated("Need to fully replace with alias-init method", ReplaceWith("init(IPipelineCodecContext)"), DeprecationLevel.WARNING)
     override fun init(dictionary: InputStream) {
-        xsdMap = decodeInputToDictionary(dictionary, XSD_FOLDER)
+        xsdMap = decodeInputToDictionary(dictionary)
         if (xsdMap.isEmpty()) {
-            throw IllegalArgumentException("No xsd were found from input dictionary!")
+            throw IllegalArgumentException("No xsd were found from decoded archive!")
         }
     }
 
     override fun init(pipelineCodecContext: IPipelineCodecContext) {
         val aliases = pipelineCodecContext.getDictionaryAliases()
-        LOGGER.info { "Dictionary folder (size: ${aliases.size}) - ${aliases.joinToString(",")}." }
-        xsdMap = emptyMap()
+
+        if (aliases.isEmpty()) {
+            return super.init(pipelineCodecContext)
+        }
+
+        xsdMap = aliases.map { pipelineCodecContext.getFile(it) }.associate { dictionary ->
+            dictionary.name to SCHEMA_FACTORY.newSchema(StreamSource(dictionary) as Source)!!
+        }
+
+        LOGGER.info { "Processed alias dictionaries: ${xsdMap.keys.joinToString(", " )}" }
     }
 
     override fun create(settings: IPipelineCodecSettings?): IPipelineCodec {
-        return XmlPipelineCodec(settings as? XmlPipelineCodecSettings ?: XmlPipelineCodecSettings(), xsdMap)
+        val codecSettings = settings as? XmlPipelineCodecSettings ?: XmlPipelineCodecSettings()
+        return XmlPipelineCodec(codecSettings,  XsdValidator(xsdMap, codecSettings.dirtyValidation))
     }
 
     companion object {
-        private const val XSD_FOLDER: String = "/tmp/xsd"
+        private const val XSD_FOLDER: String = "./tmp/xsd"
         private val LOGGER = KotlinLogging.logger { }
         const val PROTOCOL = "XML"
 
-        fun decodeInputToDictionary(dictionary: InputStream, parentDir: String): Map<String, Path> = dictionary.use {
-            val parentDirPath = Path.of(parentDir)
-            Files.createDirectory(parentDirPath)
-            val xsdDir = Files.createTempDirectory(parentDirPath, "")
-            val pathMap = ZipBase64Codec.decode(it.readAllBytes(), xsdDir.toFile())
+        private val SCHEMA_FACTORY = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI).apply {
+            errorHandler = XsdErrorHandler()
+        }
+
+        fun decodeInputToDictionary(archive: InputStream): Map<String, Schema> = archive.use {
+            val parentDirPath = Path.of(XSD_FOLDER)
+            if (File(parentDirPath.toString()).mkdirs()) {
+                LOGGER.warn { "Cannot create dictionary for path: $parentDirPath" }
+            }
+            val resultMap = ZipBase64Codec.decode(it.readAllBytes(), parentDirPath.toFile()).map { (fileName, path) ->
+                fileName to SCHEMA_FACTORY.newSchema(path.toFile())!!
+            }.toMap()
 
             LOGGER.info {
                 "Decoded xsd files: ${
@@ -66,7 +90,8 @@ class XmlPipelineCodecFactory : IPipelineCodecFactory {
                     }.toList()
                 }"
             }
-            pathMap
+
+            resultMap
         }
     }
 }

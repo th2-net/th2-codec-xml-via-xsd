@@ -17,8 +17,10 @@ package com.exactpro.th2.codec.xml.utils
 
 import com.exactpro.th2.codec.api.IPipelineCodec
 import com.exactpro.th2.codec.xml.XmlPipelineCodec
+import com.exactpro.th2.codec.xml.XmlPipelineCodecFactory
 import com.exactpro.th2.codec.xml.XmlPipelineCodecFactory.Companion.decodeInputToDictionary
 import com.exactpro.th2.codec.xml.XmlPipelineCodecSettings
+import com.exactpro.th2.codec.xml.xsd.XsdValidator
 import com.exactpro.th2.common.grpc.AnyMessage
 import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.MessageGroup
@@ -28,13 +30,22 @@ import org.apache.commons.io.FileUtils
 import org.slf4j.Logger
 import java.io.ByteArrayInputStream
 import java.io.File
-import java.nio.file.Path
 import java.util.Base64
 import kotlin.test.assertEquals
 
 abstract class XmlTest(jsonPathToType: String? = null, nameOfXsdResource: String? = null) {
 
     protected val codec: IPipelineCodec
+
+    init {
+        val xsdPathMap = nameOfXsdResource?.run {
+            val zipBase64 = Thread.currentThread().contextClassLoader.getResource(nameOfXsdResource)!!
+
+            decodeInputToDictionary(ByteArrayInputStream(encodeFileToBase64Binary(zipBase64.file)))
+        } ?: mapOf()
+
+        codec = XmlPipelineCodec(XmlPipelineCodecSettings(jsonPathToType), XsdValidator(xsdPathMap))
+    }
 
     protected fun checkEncode(xml: String, message: Message.Builder) {
         val group = codec.encode(MessageGroup.newBuilder().addMessages(AnyMessage.newBuilder().setMessage(message)).build())
@@ -55,15 +66,6 @@ abstract class XmlTest(jsonPathToType: String? = null, nameOfXsdResource: String
         LOGGER.info("DECODE_RESULT: ${TextFormat.shortDebugString(group)}")
 
         assertEqualsMessages(message.build(), group.messagesList[0].message, true)
-    }
-
-    init {
-        val xsdMap = nameOfXsdResource?.run {
-            val zipBase64 = Thread.currentThread().contextClassLoader.getResource(nameOfXsdResource)!!
-            decodeInputToDictionary(ByteArrayInputStream(encodeFileToBase64Binary(zipBase64.file)), Path.of("tmp").toString())
-        } ?: mapOf()
-
-        codec = XmlPipelineCodec(XmlPipelineCodecSettings(jsonPathToType), xsdMap)
     }
 
     protected fun encodeFileToBase64Binary(fileName: String): ByteArray {

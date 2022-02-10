@@ -68,8 +68,8 @@ jar {
 
 dependencies {
     api platform('com.exactpro.th2:bom:3.1.0')
-    implementation 'com.exactpro.th2:common:3.33.0-th2-2422-1772595233-SNAPSHOT'
-    implementation 'com.exactpro.th2:codec:4.5.0-th2-2929-1772605852-SNAPSHOT'
+    implementation 'com.exactpro.th2:common:3.33.1-TH2-3202-1825804292-SNAPSHOT'
+    implementation 'com.exactpro.th2:codec:4.5.1-TH2-3202-1825907980-SNAPSHOT'
     implementation 'com.exactpro.th2:sailfish-utils:3.12.3'
 
     implementation "com.exactpro.sf:sailfish-core:${sailfishVersion}"
@@ -86,6 +86,7 @@ dependencies {
     testImplementation "org.jetbrains.kotlin:kotlin-test-junit5:${kotlin_version}"
     testImplementation "org.junit.jupiter:junit-jupiter-api:${junitVersion}"
     testImplementation "org.junit.jupiter:junit-jupiter-params:${junitVersion}"
+    testImplementation "org.mockito.kotlin:mockito-kotlin:4.0.0"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitVersion}"
 }
 

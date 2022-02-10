@@ -35,12 +35,12 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.nio.charset.Charset
 import java.nio.file.Path
+import javax.xml.validation.Schema
 
 
-open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdMap: Map<String, Path>)  : IPipelineCodec {
+open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, private val validator: XsdValidator)  : IPipelineCodec {
 
     private var xmlCharset: Charset = Charsets.UTF_8
-    private val validator = XsdValidator(xsdMap, settings.dirtyValidation)
 
     override fun encode(messageGroup: MessageGroup): MessageGroup {
         val messages = messageGroup.messagesList
