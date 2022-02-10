@@ -21,9 +21,10 @@ import com.exactpro.th2.common.grpc.AnyMessage
 import com.exactpro.th2.common.grpc.MessageGroup
 import com.exactpro.th2.common.grpc.RawMessage
 import com.google.protobuf.ByteString
+import org.apache.commons.io.FileUtils
 import org.junit.jupiter.api.Test
+import java.io.File
 import java.nio.file.Files
-import java.nio.file.Path
 import kotlin.test.assertContains
 import kotlin.test.assertFailsWith
 
@@ -32,15 +33,22 @@ class XsdTest : XmlTest() {
 
     @Test
     fun `decode xsd schemas to tmp folder`() {
-        val parentDirPath = Path.of("tmp").also {
-            Files.createDirectories(it)
+        val parentDir = File("tmp/xsd").also {
+            if (it.exists()) {
+                FileUtils.cleanDirectory(it);
+            } else {
+                it.mkdirs()
+            }
         }
         val zipBase64 = Thread.currentThread().contextClassLoader.getResource("XSDset.zip")!!
-        val xsdMap = ZipBase64Codec.decode(encodeFileToBase64Binary(zipBase64.file), parentDirPath.toFile())
+        val xsdMap = ZipBase64Codec.decode(encodeFileToBase64Binary(zipBase64.file), parentDir)
         assertContains(xsdMap, "invoice.xsd")
         assertContains(xsdMap, "music_band.xsd")
         assertContains(xsdMap, "registration.xsd")
         assertContains(xsdMap, "service.xsd")
+        if (parentDir.exists()) {
+            parentDir.deleteRecursively()
+        }
     }
 
     @Test
