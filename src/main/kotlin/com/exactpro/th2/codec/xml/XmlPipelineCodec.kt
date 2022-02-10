@@ -17,9 +17,6 @@ package com.exactpro.th2.codec.xml
 
 import com.exactpro.th2.codec.DecodeException
 import com.exactpro.th2.codec.api.IPipelineCodec
-import com.exactpro.th2.codec.xml.utils.toMap
-import com.exactpro.th2.codec.xml.utils.toProto
-import com.exactpro.th2.codec.xml.xsd.XsdValidator
 import com.exactpro.th2.common.grpc.AnyMessage
 import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.MessageGroup
@@ -29,16 +26,14 @@ import com.exactpro.th2.common.message.messageType
 import com.exactpro.th2.common.message.toJson
 import com.github.underscore.lodash.Xml
 import com.google.protobuf.ByteString
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 import java.nio.charset.Charset
-import java.nio.file.Path
+import mu.KotlinLogging
 
-open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdMap: Map<String, Path>)  : IPipelineCodec {
+
+open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, private val validator: XsdValidator)  : IPipelineCodec {
 
     private val pointer = settings.typePointer?.split("/")?.filterNot { it.isBlank() }
     private var xmlCharset: Charset = Charsets.UTF_8
-    private val validator = XsdValidator(xsdMap, settings.dirtyValidation)
 
     override fun encode(messageGroup: MessageGroup): MessageGroup {
         val messages = messageGroup.messagesList
@@ -66,7 +61,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
         val xmlString = Xml.toXml(map)
 
         validator.validate(xmlString.toByteArray())
-        LOGGER.debug("Validation of incoming parsed message complete: ${message.messageType}")
+        LOGGER.debug { "Validation of incoming parsed message complete: ${message.messageType}" }
 
         return RawMessage.newBuilder().apply {
             if (message.hasParentEventId()) parentEventId = message.parentEventId
@@ -87,7 +82,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
 
         return MessageGroup.newBuilder().apply {
             messages.forEach { input ->
-                if (input.hasRawMessage() && checkProtocol(input.rawMessage.metadata.protocol))
+                if (input.hasRawMessage())
                     try {
                         addMessages(AnyMessage.newBuilder().setMessage(decodeOne(input.rawMessage)).build())
                     } catch (e: Exception) {
@@ -103,12 +98,12 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
     private fun decodeOne(rawMessage: RawMessage): Message {
         try {
             validator.validate(rawMessage.body.toByteArray())
-            LOGGER.debug("Validation of incoming raw message complete: ${rawMessage.logId}")
+            LOGGER.debug { "Validation of incoming raw message complete: ${rawMessage.logId}" }
             val xmlString = rawMessage.body.toStringUtf8()
             @Suppress("UNCHECKED_CAST")
             val map = Xml.fromXml(xmlString) as MutableMap<String, *>
 
-            LOGGER.trace("Result of the 'Xml.fromXml' method is ${map.keys} for $xmlString")
+            LOGGER.trace {"Result of the 'Xml.fromXml' method is ${map.keys} for $xmlString"}
             map -= STANDALONE
             map -= ENCODING
 
@@ -141,7 +136,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
 
 
     companion object {
-        private val LOGGER: Logger = LoggerFactory.getLogger(XmlPipelineCodec::class.java)
+        private val LOGGER = KotlinLogging.logger { this::class.java.simpleName }
 
         private const val NO = "no"
 
