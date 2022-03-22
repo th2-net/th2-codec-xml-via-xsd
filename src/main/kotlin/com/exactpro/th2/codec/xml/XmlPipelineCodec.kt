@@ -24,6 +24,7 @@ import com.exactpro.th2.common.grpc.AnyMessage
 import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.MessageGroup
 import com.exactpro.th2.common.grpc.RawMessage
+import com.exactpro.th2.common.message.logId
 import com.exactpro.th2.common.message.messageType
 import com.exactpro.th2.common.message.toJson
 import com.github.underscore.lodash.Xml
@@ -68,7 +69,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
         LOGGER.debug("Validation of incoming parsed message complete: ${message.messageType}")
 
         return RawMessage.newBuilder().apply {
-            parentEventId = message.parentEventId
+            if (message.hasParentEventId()) parentEventId = message.parentEventId
             metadataBuilder.putAllProperties(message.metadata.propertiesMap)
             metadataBuilder.protocol = XmlPipelineCodecFactory.PROTOCOL
             metadataBuilder.id = message.metadata.id
@@ -102,28 +103,23 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
     private fun decodeOne(rawMessage: RawMessage): Message {
         try {
             validator.validate(rawMessage.body.toByteArray())
-            LOGGER.debug("Validation of incoming raw message complete: ${rawMessage.metadata.idOrBuilder}")
+            LOGGER.debug("Validation of incoming raw message complete: ${rawMessage.logId}")
             val xmlString = rawMessage.body.toStringUtf8()
             @Suppress("UNCHECKED_CAST")
             val map = Xml.fromXml(xmlString) as MutableMap<String, *>
 
-            LOGGER.debug("Result of the 'Xml.fromXml' method is ${map.keys} for $xmlString")
-            map.apply {
-                remove(STANDALONE)
-                remove(ENCODING)
-            }
+            LOGGER.trace("Result of the 'Xml.fromXml' method is ${map.keys} for $xmlString")
+            map -= STANDALONE
+            map -= ENCODING
 
-            if (map.contains(OMIT_XML_DECLARATION)) {
+            if (OMIT_XML_DECLARATION in map) {
                 // U library will tell by this option is there no declaration
-                if (!settings.expectsDeclaration || map[OMIT_XML_DECLARATION] == NO) {
-                    map.remove("#omit-xml-declaration")
-                } else {
-                    error("Expecting declaration inside xml data")
-                }
+                check(!settings.expectsDeclaration || map[OMIT_XML_DECLARATION] == NO) { "Expecting declaration inside xml data" }
+                map -= OMIT_XML_DECLARATION
             }
 
             if (map.size > 1) {
-                error("There was more than one root node in processed xml, result json have [${map.size}]: ${map.keys.joinToString(", ")}")
+                error("There was more than one root node in processed xml, result json has [${map.size}]: ${map.keys.joinToString(", ")}")
             }
 
             val msgType: String = pointer?.let { map.getNode<String>(it) } ?: map.keys.first()
@@ -135,13 +131,10 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
     }
 
     private inline fun <reified T>Map<*,*>.getNode(pointer: List<String>): T {
-        val steps = pointer.toMutableList()
-        var current = this[steps[0]]
-        for (i in 1 until steps.size) {
-            if (current == null) {
-                error("Can not find element by name: ${steps[i]} in path: $pointer")
-            }
-            current = (current as Map<*, *>)[steps[i]]
+        var current: Any = this
+
+        for (name in pointer) {
+            current = (current as? Map<*, *>)?.get(name) ?: error("Can not find element by name '$name' in path: $pointer")
         }
         return current as T
     }

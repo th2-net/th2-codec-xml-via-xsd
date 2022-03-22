@@ -19,9 +19,9 @@ import com.exactpro.th2.codec.xml.XmlPipelineCodecFactory
 import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.RawMessage
 import com.exactpro.th2.common.grpc.Value
-import com.exactpro.th2.common.message.addField
 import com.exactpro.th2.common.message.message
 import com.exactpro.th2.common.message.messageType
+import com.exactpro.th2.common.message.set
 import com.exactpro.th2.common.value.getMessage
 import com.exactpro.th2.common.value.toValue
 import java.lang.IllegalArgumentException
@@ -31,37 +31,33 @@ private fun Map<String, *>.toProtoValue(name: String = ""): Value {
     val message = message().also { builder ->
         builder.messageType = name
     }
-    this.forEach {
-        when(it.value) {
-            is Map<*,*> -> {
-                message.addField(it.key, (it.value as Map<String, *>).toProtoValue())
+    for ((key, value) in this) {
+        message[key] = when (value) {
+            is Map<*, *> -> (value as Map<String, *>).toProtoValue()
+            is String -> value
+            is ArrayList<*> -> when {
+                value[0] is Map<*, *> -> value.map { element -> (element as Map<String, *>).toProtoValue() }.toValue()
+                else -> value.toValue()
             }
-            is String -> {
-                message.addField(it.key, it.value)
-            }
-            is ArrayList<*> -> {
-                when((it.value as ArrayList<*>)[0]) {
-                    is Map<*,*> -> message.addField(it.key, (it.value as ArrayList<*>).map { arrayElement -> (arrayElement as Map<String,String>).toProtoValue() }.toValue())
-                    else -> message.addField(it.key, (it.value as ArrayList<*>).toValue())
-                }
-            }
-            null -> Unit
-            else -> {
-                error("Unsupported type of value: ${it.value!!::class.simpleName}")
-            }
+            null -> continue
+            else -> error("Unsupported type of value: ${value::class.simpleName}")
         }
     }
     return message.build().toValue()
 }
 
-fun Map<String, *>.toProto(type: String, rawMessage: RawMessage): Message = this.toProtoValue(type).getMessage()!!.toBuilder().also { builder ->
-    builder.parentEventId = rawMessage.parentEventId
-    builder.metadataBuilder.also { msgMetadata ->
-        rawMessage.metadata.also { rawMetadata ->
-            msgMetadata.id = rawMetadata.id
-            msgMetadata.timestamp = rawMetadata.timestamp
-            msgMetadata.protocol = XmlPipelineCodecFactory.PROTOCOL
-            msgMetadata.putAllProperties(rawMetadata.propertiesMap)
-        }
+fun Map<String, *>.toProto(type: String, rawMessage: RawMessage): Message {
+    val builder = toProtoValue(type).getMessage()?.toBuilder() ?: throw IllegalArgumentException("JsonNode $this does not contain a message")
+    val rawMetadata = rawMessage.metadata
+
+    if (rawMessage.hasParentEventId()) builder.parentEventId = rawMessage.parentEventId
+
+    builder.metadataBuilder.apply {
+        id = rawMetadata.id
+        timestamp = rawMetadata.timestamp
+        protocol = XmlPipelineCodecFactory.PROTOCOL
+        putAllProperties(rawMetadata.propertiesMap)
     }
-}.build() ?: throw IllegalArgumentException("JsonNode $this does not contain a message")
+
+    return builder.build()
+}

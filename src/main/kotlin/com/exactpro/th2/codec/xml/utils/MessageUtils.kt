@@ -18,27 +18,21 @@ package com.exactpro.th2.codec.xml.utils
 import com.exactpro.th2.common.grpc.ListValue
 import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.Value
+import com.exactpro.th2.common.grpc.Value.KindCase.NULL_VALUE
+import com.exactpro.th2.common.grpc.Value.KindCase.SIMPLE_VALUE
+import com.exactpro.th2.common.grpc.Value.KindCase.MESSAGE_VALUE
+import com.exactpro.th2.common.grpc.Value.KindCase.LIST_VALUE
 
-fun Message.toMap(): MutableMap<String, Any> = LinkedHashMap<String, Any>().also { messageMap ->
-    this.fieldsMap.forEach {
-        messageMap.putField(it.key, it.value)
-    }
+
+fun Message.toMap(): MutableMap<String, Any?> = fieldsMap.mapValuesTo(LinkedHashMap()) { it.value.toObject() }
+
+fun ListValue.toList(): MutableList<Any?> = MutableList(valuesCount) { valuesList[it].toObject() }
+
+fun Value.toObject(): Any? = when (kindCase) {
+    NULL_VALUE -> null
+    SIMPLE_VALUE -> simpleValue
+    MESSAGE_VALUE -> messageValue.toMap()
+    LIST_VALUE -> listValue.toList()
+    else -> error("Unknown value kind: $this")
 }
 
-fun MutableMap<String, Any>.putField(name: String, field: Value) {
-    when {
-        field.hasMessageValue() -> put(name, field.messageValue.toMap())
-        field.hasListValue() -> put (name, field.listValue.toArray())
-        else -> put(name, field.simpleValue)
-    }
-}
-
-private fun ListValue.toArray(): ArrayList<*> = ArrayList<Any>().also { resultArray ->
-    valuesList.forEach { valueFromList ->
-        when {
-            valueFromList.hasMessageValue() -> resultArray.add(valueFromList.messageValue.toMap())
-            valueFromList.hasListValue() -> resultArray.add(valueFromList.listValue.toArray())
-            else -> resultArray.add(valueFromList.simpleValue)
-        }
-    }
-}
