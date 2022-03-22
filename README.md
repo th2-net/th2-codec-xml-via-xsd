@@ -1,5 +1,5 @@
 # Codec Xml via Xsd
-![version](https://img.shields.io/badge/version-0.0.2-blue.svg)
+![version](https://img.shields.io/badge/version-0.0.3-blue.svg)
 
 # How it works:
 
@@ -58,10 +58,12 @@ Error from validation process can be disabled for test purposes by `dirtyValidat
 
 * typePointer - Path to message type value for decode (null by default)
 * dirtyValidation - Disable/enable error during validation phase. If disabled all errors will be only visible in log  (false by default)
+* expectsDeclaration - Disable/enable validation of declaration - is it exist or not (true by default)
 
 ```yaml
 typePointer: /root/node/node2/type
 dirtyValidation: false
+expectsDeclaration: false
 ```
 
 For example:
@@ -139,6 +141,13 @@ spec:
 ```
 
 ## Changelog
+
+### v0.0.3
+
+#### Feature:
+
+* Declaration check option
+* Json step as converter was removed [ Message -> **Json** -> Map -> XmlString -> Xml ] to  [ Message -> Map -> XmlString -> Xml ] 
 
 ### v0.0.2
 

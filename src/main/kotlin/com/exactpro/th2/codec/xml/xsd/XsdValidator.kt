@@ -61,7 +61,7 @@ class XsdValidator(private val xsdMap: Map<String, Path>, private val dirtyValid
             }
         } catch (e: Exception) {
             if (dirtyValidation) {
-                LOGGER.error("VALIDATION ERROR: ", e)
+                LOGGER.warn("VALIDATION ERROR: ", e)
             } else {
                 throw e
             }
