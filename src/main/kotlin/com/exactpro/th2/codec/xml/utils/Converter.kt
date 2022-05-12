@@ -28,10 +28,10 @@ import com.exactpro.th2.common.value.toValue
 import java.lang.IllegalArgumentException
 
 @Suppress("UNCHECKED_CAST")
-private fun MutableMap<String, *>.toProtoValue(name: String = ""): Value {
+private fun MutableMap<String, *>.toProtoValue(name: String = ""): Value? {
     this.removeSelfClosing()
     if (this.isEmpty()) {
-        return nullValue()
+        return null
     }
     val message = message().also { builder ->
         builder.messageType = name
@@ -54,7 +54,7 @@ private fun MutableMap<String, *>.toProtoValue(name: String = ""): Value {
 }
 
 fun MutableMap<String, *>.toProto(type: String, rawMessage: RawMessage): Message {
-    val builder = toProtoValue(type).getMessage()?.toBuilder()
+    val builder = toProtoValue(type)?.getMessage()?.toBuilder()
         ?: throw IllegalArgumentException("JsonNode $this does not contain a message")
     val rawMetadata = rawMessage.metadata
 
