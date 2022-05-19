@@ -23,7 +23,6 @@ import com.exactpro.th2.common.message.message
 import com.exactpro.th2.common.message.messageType
 import com.exactpro.th2.common.message.set
 import com.exactpro.th2.common.value.getMessage
-import com.exactpro.th2.common.value.nullValue
 import com.exactpro.th2.common.value.toValue
 import java.lang.IllegalArgumentException
 
