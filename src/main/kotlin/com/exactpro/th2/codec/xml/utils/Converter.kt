@@ -27,17 +27,23 @@ import com.exactpro.th2.common.value.toValue
 import java.lang.IllegalArgumentException
 
 @Suppress("UNCHECKED_CAST")
-private fun Map<String, *>.toProtoValue(name: String = ""): Value {
+private fun MutableMap<String, *>.toProtoValue(name: String = ""): Value? {
+    this.removeSelfClosing()
+    if (this.isEmpty()) {
+        return null
+    }
     val message = message().also { builder ->
         builder.messageType = name
     }
     for ((key, value) in this) {
         message[key] = when (value) {
-            is Map<*, *> -> (value as Map<String, *>).toProtoValue()
+            is Map<*, *> -> (value as MutableMap<String, *>).toProtoValue()
             is String -> value
-            is ArrayList<*> -> when {
-                value[0] is Map<*, *> -> value.map { element -> (element as Map<String, *>).toProtoValue() }.toValue()
-                else -> value.toValue()
+            is ArrayList<*> -> value.mapNotNull {
+                when (it) {
+                    is Map<*, *> -> (it as MutableMap<String, *>).toProtoValue()
+                    else -> it.toValue()
+                }
             }
             null -> continue
             else -> error("Unsupported type of value: ${value::class.simpleName}")
@@ -46,8 +52,9 @@ private fun Map<String, *>.toProtoValue(name: String = ""): Value {
     return message.build().toValue()
 }
 
-fun Map<String, *>.toProto(type: String, rawMessage: RawMessage): Message {
-    val builder = toProtoValue(type).getMessage()?.toBuilder() ?: throw IllegalArgumentException("JsonNode $this does not contain a message")
+fun MutableMap<String, *>.toProto(type: String, rawMessage: RawMessage): Message {
+    val builder = toProtoValue(type)?.getMessage()?.toBuilder()
+        ?: throw IllegalArgumentException("JsonNode $this does not contain a message")
     val rawMetadata = rawMessage.metadata
 
     if (rawMessage.hasParentEventId()) builder.parentEventId = rawMessage.parentEventId
@@ -61,3 +68,5 @@ fun Map<String, *>.toProto(type: String, rawMessage: RawMessage): Message {
 
     return builder.build()
 }
+
+fun MutableMap<String, *>.removeSelfClosing() = this.apply { remove("-self-closing") }
