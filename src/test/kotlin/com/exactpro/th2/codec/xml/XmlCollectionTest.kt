@@ -79,4 +79,26 @@ class XmlCollectionTest : XmlTest() {
 
         checkEncode(xml, msg)
     }
+
+    @Test
+    fun `test decode array with self-closing tag`() {
+        val xml = """
+            <TestCollection>
+                <array/>
+                <array>
+                    <data>1</data>
+                    <data>2</data>
+                </array>
+            </TestCollection>
+        """.trimIndent()
+        val msg = parsedMessage("TestCollection").addFields(
+            "TestCollection", message().apply {
+                addField("array", listOf(message().apply {
+                    addField("data", listOf("1", "2"))
+                }))
+            },
+        )
+
+        checkDecode(xml, msg)
+    }
 }

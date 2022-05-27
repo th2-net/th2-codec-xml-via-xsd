@@ -1,5 +1,5 @@
 # Codec Xml via Xsd
-![version](https://img.shields.io/badge/version-0.0.3-blue.svg)
+![version](https://img.shields.io/badge/version-0.0.4-blue.svg)
 
 # How it works:
 
@@ -141,6 +141,12 @@ spec:
 ```
 
 ## Changelog
+
+### v0.0.4
+
+#### Feature:
+
+* Self-closing tags are ignored by the codec
 
 ### v0.0.3
 
