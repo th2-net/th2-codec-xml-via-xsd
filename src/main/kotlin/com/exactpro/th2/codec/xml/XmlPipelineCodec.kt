@@ -38,7 +38,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
 
     private val pointer = settings.typePointer?.split("/")?.filterNot { it.isBlank() }
     private var xmlCharset: Charset = Charsets.UTF_8
-    private val validator = XsdValidator(xsdMap, settings.dirtyValidation)
+//    private val validator = XsdValidator(xsdMap, settings.dirtyValidation)
 
     override fun encode(messageGroup: MessageGroup): MessageGroup {
         val messages = messageGroup.messagesList
@@ -65,8 +65,8 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
         val map = message.toMap()
         val xmlString = Xml.toXml(map)
 
-        validator.validate(xmlString.toByteArray())
-        LOGGER.debug("Validation of incoming parsed message complete: ${message.messageType}")
+//        validator.validate(xmlString.toByteArray())
+//        LOGGER.debug("Validation of incoming parsed message complete: ${message.messageType}")
 
         return RawMessage.newBuilder().apply {
             if (message.hasParentEventId()) parentEventId = message.parentEventId
@@ -102,8 +102,8 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
 
     private fun decodeOne(rawMessage: RawMessage): Message {
         try {
-            validator.validate(rawMessage.body.toByteArray())
-            LOGGER.debug("Validation of incoming raw message complete: ${rawMessage.logId}")
+//            validator.validate(rawMessage.body.toByteArray())
+//            LOGGER.debug("Validation of incoming raw message complete: ${rawMessage.logId}")
             val xmlString = rawMessage.body.toStringUtf8()
             @Suppress("UNCHECKED_CAST")
             val map = Xml.fromXml(xmlString) as MutableMap<String, *>
