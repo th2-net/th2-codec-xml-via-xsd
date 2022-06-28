@@ -15,10 +15,12 @@
 
 package com.exactpro.th2.codec.xml
 
+import StreamReaderDelegateDecorator
 import com.exactpro.th2.codec.DecodeException
 import com.exactpro.th2.codec.api.IPipelineCodec
 import com.exactpro.th2.codec.xml.utils.toMap
 import com.exactpro.th2.codec.xml.utils.toProto
+import com.exactpro.th2.codec.xml.xsd.XsdErrorHandler
 import com.exactpro.th2.codec.xml.xsd.XsdValidator
 import com.exactpro.th2.common.grpc.AnyMessage
 import com.exactpro.th2.common.grpc.Message
@@ -29,16 +31,24 @@ import com.exactpro.th2.common.message.messageType
 import com.exactpro.th2.common.message.toJson
 import com.github.underscore.lodash.Xml
 import com.google.protobuf.ByteString
+import org.apache.tika.io.IOUtils
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import java.io.File
 import java.nio.charset.Charset
 import java.nio.file.Path
+import javax.xml.XMLConstants
+import javax.xml.stream.XMLInputFactory
+import javax.xml.transform.stax.StAXSource
+import javax.xml.validation.SchemaFactory
 
 open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdMap: Map<String, Path>)  : IPipelineCodec {
 
     private val pointer = settings.typePointer?.split("/")?.filterNot { it.isBlank() }
     private var xmlCharset: Charset = Charsets.UTF_8
-    private val validator = XsdValidator(xsdMap, settings.dirtyValidation)
+        private val oldValidator = XsdValidator(xsdMap, settings.dirtyValidation)
+    //    private val validator = ParsingValidator()
+//    private val validator = schema.newValidator().apply { errorHandler = XsdErrorHandler() }
 
     override fun encode(messageGroup: MessageGroup): MessageGroup {
         val messages = messageGroup.messagesList
@@ -65,7 +75,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
         val map = message.toMap()
         val xmlString = Xml.toXml(map)
 
-        validator.validate(xmlString.toByteArray())
+        oldValidator.validate(xmlString.toByteArray())
         LOGGER.debug("Validation of incoming parsed message complete: ${message.messageType}")
 
         return RawMessage.newBuilder().apply {
@@ -102,29 +112,48 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
 
     private fun decodeOne(rawMessage: RawMessage): Message {
         try {
-            validator.validate(rawMessage.body.toByteArray())
-            LOGGER.debug("Validation of incoming raw message complete: ${rawMessage.logId}")
             val xmlString = rawMessage.body.toStringUtf8()
-            @Suppress("UNCHECKED_CAST")
-            val map = Xml.fromXml(xmlString) as MutableMap<String, *>
+            val schemaFile = getSchemaFile(rawMessage)
 
-            LOGGER.trace("Result of the 'Xml.fromXml' method is ${map.keys} for $xmlString")
-            map -= STANDALONE
-            map -= ENCODING
+            if (schemaFile != null) {
+                // TODO: pass file as param and cache schemas in a concurrent map
+                val schema = SCHEMA_FACTORY.newSchema(schemaFile)
+                val validator = schema.newValidator().apply { errorHandler = XsdErrorHandler() }
+                val reader = StreamReaderDelegateDecorator(XML_INPUT_FACTORY.createXMLStreamReader(IOUtils.toInputStream(xmlString)), rawMessage)
 
-            if (OMIT_XML_DECLARATION in map) {
-                // U library will tell by this option is there no declaration
-                check(!settings.expectsDeclaration || map[OMIT_XML_DECLARATION] == NO) { "Expecting declaration inside xml data" }
-                map -= OMIT_XML_DECLARATION
+                try {
+                    validator.validate(StAXSource(reader))
+                } catch (e: Exception) {
+                    reader.clearElements()
+                    throw e
+                }
+
+                LOGGER.debug("Validation of incoming raw message complete: ${rawMessage.logId}")
+                return reader.getMessage()
+            } else {
+                throw IllegalArgumentException("Raw message ${rawMessage.logId} does not contain schemaLocation")
             }
 
-            if (map.size > 1) {
-                error("There was more than one root node in processed xml, result json has [${map.size}]: ${map.keys.joinToString(", ")}")
-            }
-
-            val msgType: String = pointer?.let { map.getNode<String>(it) } ?: map.keys.first()
-
-            return map.toProto(msgType, rawMessage)
+//            @Suppress("UNCHECKED_CAST")
+//            val map = Xml.fromXml(xmlString) as MutableMap<String, *>
+//
+//            LOGGER.trace("Result of the 'Xml.fromXml' method is ${map.keys} for $xmlString")
+//            map -= STANDALONE
+//            map -= ENCODING
+//
+//            if (OMIT_XML_DECLARATION in map) {
+//                // U library will tell by this option is there no declaration
+//                check(!settings.expectsDeclaration || map[OMIT_XML_DECLARATION] == NO) { "Expecting declaration inside xml data" }
+//                map -= OMIT_XML_DECLARATION
+//            }
+//
+//            if (map.size > 1) {
+//                error("There was more than one root node in processed xml, result json has [${map.size}]: ${map.keys.joinToString(", ")}")
+//            }
+//
+//            val msgType: String = pointer?.let { map.getNode<String>(it) } ?: map.keys.first()
+//
+//            return map.toProto(msgType, rawMessage)
         } catch (e: Exception) {
             throw DecodeException("Can not decode message. Can not parse XML. ${rawMessage.body.toStringUtf8()}", e)
         }
@@ -139,9 +168,22 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
         return current as T
     }
 
+    private fun getSchemaFile(rawMessage: RawMessage): File? {
+        val body = rawMessage.body.toStringUtf8()
+        val start = body.indexOf("schemaLocation=\"") + 16
+        val end = body.substring(start).indexOf("\"") + start
+
+        return if (start != -1) { File(body.substring(start, end)) } else { null }
+    }
 
     companion object {
         private val LOGGER: Logger = LoggerFactory.getLogger(XmlPipelineCodec::class.java)
+
+        private val XML_INPUT_FACTORY = XMLInputFactory.newInstance()
+
+        private val SCHEMA_FACTORY = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI).apply {
+            errorHandler = XsdErrorHandler()
+        }
 
         private const val NO = "no"
 
