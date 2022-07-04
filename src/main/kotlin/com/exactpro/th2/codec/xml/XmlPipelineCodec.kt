@@ -42,13 +42,11 @@ import javax.xml.stream.XMLInputFactory
 import javax.xml.transform.stax.StAXSource
 import javax.xml.validation.SchemaFactory
 
-open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdMap: Map<String, Path>)  : IPipelineCodec {
+open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, private val xsdMap: Map<String, Path>)  : IPipelineCodec {
 
     private val pointer = settings.typePointer?.split("/")?.filterNot { it.isBlank() }
     private var xmlCharset: Charset = Charsets.UTF_8
-        private val oldValidator = XsdValidator(xsdMap, settings.dirtyValidation)
-    //    private val validator = ParsingValidator()
-//    private val validator = schema.newValidator().apply { errorHandler = XsdErrorHandler() }
+    private val oldValidator = XsdValidator(xsdMap, settings.dirtyValidation)
 
     override fun encode(messageGroup: MessageGroup): MessageGroup {
         val messages = messageGroup.messagesList
@@ -113,26 +111,25 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
     private fun decodeOne(rawMessage: RawMessage): Message {
         try {
             val xmlString = rawMessage.body.toStringUtf8()
-            val schemaFile = getSchemaFile(rawMessage)
+//            val schemaLocations = getSchemaLocations(rawMessage)
 
-            if (schemaFile != null) {
-                // TODO: pass file as param and cache schemas in a concurrent map
-                val schema = SCHEMA_FACTORY.newSchema(schemaFile)
-                val validator = schema.newValidator().apply { errorHandler = XsdErrorHandler() }
-                val reader = StreamReaderDelegateDecorator(XML_INPUT_FACTORY.createXMLStreamReader(IOUtils.toInputStream(xmlString)), rawMessage)
+            val reader = StreamReaderDelegateDecorator(
+                XML_INPUT_FACTORY.createXMLStreamReader(IOUtils.toInputStream(xmlString)),
+                rawMessage,
+                xsdMap
+            )
 
-                try {
-                    validator.validate(StAXSource(reader))
-                } catch (e: Exception) {
-                    reader.clearElements()
-                    throw e
+            try {
+                while (reader.hasNext()) {
+                    reader.next()
                 }
 
-                LOGGER.debug("Validation of incoming raw message complete: ${rawMessage.logId}")
                 return reader.getMessage()
-            } else {
-                throw IllegalArgumentException("Raw message ${rawMessage.logId} does not contain schemaLocation")
+            } finally {
+                reader.clearElements()
+                reader.close()
             }
+
 
 //            @Suppress("UNCHECKED_CAST")
 //            val map = Xml.fromXml(xmlString) as MutableMap<String, *>
@@ -158,6 +155,10 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
             throw DecodeException("Can not decode message. Can not parse XML. ${rawMessage.body.toStringUtf8()}", e)
         }
     }
+
+//    private fun getSchemaLocations(rawMessage: RawMessage): List<String> {
+//
+//    }
 
     private inline fun <reified T>Map<*,*>.getNode(pointer: List<String>): T {
         var current: Any = this
