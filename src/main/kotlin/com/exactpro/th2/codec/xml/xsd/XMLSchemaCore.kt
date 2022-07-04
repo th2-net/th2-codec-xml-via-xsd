@@ -6,7 +6,7 @@ import javax.xml.namespace.QName
 import javax.xml.transform.stream.StreamSource
 
 class XMLSchemaCore {
-    private val schemaElements: MutableList<XmlSchemaElement> = mutableListOf()
+    private val schemaElements: MutableList<XmlSchemaElement> = mutableListOf() // FIXME: what is it for?
 
     fun getXSDElements(xsdPath: String): Map<QName, List<MyXmlElement>> {
         val xmlSchemaCollection = XmlSchemaCollection()
@@ -36,38 +36,49 @@ class XMLSchemaCore {
 
             if (particle is XmlSchemaSequence) {
                 particle.items.forEach { item ->
-                    val itemElement = item as XmlSchemaElement
+                    val itemElements = getItemElements(item)
 
-                    schemaElements.add(itemElement)
+                   itemElements.forEach {
+                       schemaElements.add(it)
 
-                    addChild(element.qName, MyXmlElement(itemElement), xsdElements)
-                    // Call method recursively to get all subsequent element
-                    getChildElementNames(itemElement, xsdElements)
-                    schemaElements.clear()
+                       xsdElements.addChild(element.qName, MyXmlElement(it))
+                       // Call method recursively to get all subsequent element
+                       getChildElementNames(it, xsdElements)
+                       schemaElements.clear()
+                   }
                 }
             }
+        } else if (elementType is XmlSchemaSimpleType) {
 
         }
     }
 
-    private fun addChild(qName: QName, child: MyXmlElement, xsdElements: MutableMap<QName, MutableList<MyXmlElement>>) {
-        val values: MutableList<MyXmlElement> = xsdElements[qName] ?: ArrayList()
-
-        values.add(child)
-        xsdElements[qName] = values;
+    private fun getItemElements(item: XmlSchemaSequenceMember): Collection<XmlSchemaElement> {
+        return when (item) {
+            is XmlSchemaElement -> listOf(item)
+            is XmlSchemaChoice -> item.items.map { it as XmlSchemaElement }
+            is XmlSchemaSequence -> item.items.map { it as XmlSchemaElement }
+            is XmlSchemaAny -> emptyList()
+            else -> { throw IllegalArgumentException("Not a valid type of $item") }
+        }
     }
 
-    class MyXmlElement(private val element: XmlSchemaElement) {
+    private fun MutableMap<QName, MutableList<MyXmlElement>>.addChild(qName: QName, child: MyXmlElement) {
+        val values: MutableList<MyXmlElement> = this[qName] ?: ArrayList()
+
+        values.add(child)
+        this[qName] = values;
+    }
+
+    class MyXmlElement(element: XmlSchemaElement) {
         private val type: XmlSchemaType = element.schemaType
 
         val qName = element.qName
 
-        fun getElementType(): ElementType {
-            return when {
+        val elementType: ElementType = when {
                 type !is XmlSchemaComplexType -> ElementType.SIMPLE_VALUE
                 element.maxOccurs > 1 -> ElementType.LIST_VALUE
                 else -> ElementType.MESSAGE_VALUE
             }
-        }
     }
 }
