@@ -1,33 +1,89 @@
 import com.exactpro.th2.codec.xml.xsd.XMLSchemaCore
+import com.exactpro.th2.codec.xml.xsd.XmlElementWrapper
+import com.exactpro.th2.common.grpc.ListValue
 import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.RawMessage
-import com.exactpro.th2.common.message.*
 import mu.KotlinLogging
-import java.nio.file.Path
 import java.util.Stack
+import javax.xml.namespace.QName
 import javax.xml.stream.XMLStreamException
 import javax.xml.stream.XMLStreamReader
 import javax.xml.stream.util.StreamReaderDelegate
+import com.exactpro.th2.common.grpc.Value.KindCase.SIMPLE_VALUE
+import com.exactpro.th2.common.grpc.Value.KindCase.MESSAGE_VALUE
+import com.exactpro.th2.common.grpc.Value.KindCase.LIST_VALUE
+import com.exactpro.th2.common.message.addField
+import com.exactpro.th2.common.message.message
+import com.exactpro.th2.common.message.set
+import com.exactpro.th2.common.message.get
+import com.exactpro.th2.common.message.updateField
+import com.exactpro.th2.common.value.add
+import com.exactpro.th2.common.value.listValue
+import com.exactpro.th2.common.value.toValue
+import com.google.protobuf.MessageOrBuilder
+import java.nio.file.Path
 
 class StreamReaderDelegateDecorator(reader: XMLStreamReader,
                                     private val rawMessage: RawMessage,
                                     private val xsdMap: Map<String, Path>) : StreamReaderDelegate(reader) {
-    private val elementStack = Stack<String>()
+    private val messageBuilders = mutableMapOf<String, MessageOrBuilder>()
+    private val listValueBuilders = mutableMapOf<String, ListValue.Builder>()
+
+    private val elementStack = Stack<QName>()
     private val messageBuilder = message()
     private val metadataBuilder = messageBuilder.metadataBuilder
     private var foundMsgType = false
-    private var previousElement: Int = -1
 
-    private val schemaCore = XMLSchemaCore()
-//    private val xsdElements = schemaCore.getXSDElements(xsdMap)
+    private val xmlSchemaCore = XMLSchemaCore()
+
+    private val xsdElements: MutableMap<QName, List<XmlElementWrapper>> =
+        xmlSchemaCore.getXSDElements(xsdMap.values.map { it.toString() }).toMutableMap() // = mutableMapOf<QName, List<XmlElementWrapper>>()
+
+    // FIXME: figure out something better
+    private val allElements = xsdElements.values.flatten().associate { it.qName to it.elementType }.toMutableMap()
 
     @Throws(XMLStreamException::class)
     override fun next(): Int {
         val n: Int = super.next()
+        val qName = QName(namespaceURI, localName)
 
         when (n) {
             START_ELEMENT -> {
-                elementStack.push(localName)
+
+                elementStack.push(qName)
+
+                for (i in 0 until attributeCount) {
+                    val attributeName = getAttributeName(i).localPart
+
+                    if (attributeName.endsWith("schemaLocation") || attributeName.equals("xmlns:ds")) {
+                        cacheXsdFromAttribute(attributeName)
+                    }
+                }
+
+//                val elements = xsdElements[QName(namespaceURI, localName)]
+
+                when(allElements[qName]) {
+                    SIMPLE_VALUE -> {
+//                        messageBuilders[localName] = localName.toValue()
+                    }
+                    MESSAGE_VALUE -> {
+                        val builder = message().addField(localName, null) // to be updated later
+                            .also {
+                            if (attributeCount > 0) {
+                                writeAttributes(it)
+                            }
+                        }
+
+//                        messageBuilders[localName] = builder
+                        messageBuilder[localName] = builder
+                    }
+                    LIST_VALUE -> {
+//                        messageBuilders[localName] = listValue().add(localName.toValue())
+//                        messageBuilder[localName] = listValue()
+                        listValueBuilders[localName] = listValue()
+                    }
+                    else -> { throw java.lang.IllegalArgumentException("Element is not a simpleValue, messageValue or listValue") }
+                }
 
                 // TODO: also use pointer
                 if (!foundMsgType) {
@@ -35,30 +91,27 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
                     foundMsgType = true
                 }
 
-                if (previousElement != -1) {
-                    val subBuilder = message()
-//                    messageBuilder[localName] =
-
-                    if (attributeCount > 0) {
-                        writeAttributes()
-                    }
-                } else {
-                    if (attributeCount > 0) {
-                        writeAttributes()
-                    }
-                }
-
-                println("START_ELEMENT localName: $localName")
-
-                previousElement = n
             }
             CHARACTERS -> {
                if (text.isNotBlank()) {
                    val element = elementStack.peek()
 
-                   messageBuilder[element] = text // TODO: how to make nested fields? And what's with listValue?
-
-                   println("CHARACTERS text: $text")
+                   when(allElements[qName]) {
+                       SIMPLE_VALUE -> {
+//                           messageBuilders[element.localPart] = text.toValue()
+                           messageBuilder[element.localPart] = text.toValue()
+                       }
+                       MESSAGE_VALUE -> {
+//                           val builder = messageBuilders[element.localPart] as Message.Builder
+                           val builder = messageBuilder[element.localPart] as Message.Builder
+                           builder.updateField(element.localPart) { setSimpleValue(text) }
+                       }
+                       LIST_VALUE -> {
+//                           (messageBuilder[localName]).add(localName.toValue())
+                           checkNotNull(listValueBuilders[localName]).add(text.toValue())
+                       }
+                       else -> { throw java.lang.IllegalArgumentException("Element is not a simpleValue, messageValue or listValue") }
+                   }
                }
             }
             END_ELEMENT -> { elementStack.pop() }
@@ -83,6 +136,10 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
         if (rawMessage.hasParentEventId()) {
             messageBuilder.parentEventId = rawMessage.parentEventId
         }
+
+        listValueBuilders.forEach {
+            messageBuilder[it.key] = it.value
+        }
         
         val message = messageBuilder.build()
         messageBuilder.clear()
@@ -92,23 +149,28 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
 
     fun clearElements() { elementStack.clear() }
 
-    private fun writeAttributes() {
-        val builder = message()
-
+    private fun writeAttributes(localBuilder: Message.Builder) {
         for (i in 0 until attributeCount) {
-            println("Attribute $i: ${getAttributeName(i)} - ${getAttributeValue(i)}")
+            localBuilder[getAttributeName(i).localPart] = getAttributeValue(i)
+        }
+    }
 
-            builder[getAttributeName(i).localPart] = getAttributeValue(i)
+    private fun cacheXsdFromAttribute(attributeName: String) {
+        val props = xmlSchemaCore.xsdProperties
+
+        val xsdFileName = props.getProperty(attributeName.substring(18).replace('/', '_'))
+
+        xmlSchemaCore.getXSDElements(listOf(xsdFileName)).forEach {
+            xsdElements.putIfAbsent(it.key, it.value)
         }
 
-        messageBuilder[localName] = builder//.build()
+        // FIXME: figure out something better
+        xsdElements.values.flatten().associate { it.qName to it.elementType }.forEach {
+            allElements.putIfAbsent(it.key, it.value)
+        }
     }
 
     companion object {
         private val LOGGER = KotlinLogging.logger { }
-    }
-
-    private class Element(name: String, builder: Any) {
-
     }
 }

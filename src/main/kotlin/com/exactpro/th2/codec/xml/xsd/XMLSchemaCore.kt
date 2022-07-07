@@ -2,33 +2,40 @@ package com.exactpro.th2.codec.xml.xsd
 
 import org.apache.ws.commons.schema.*
 import java.io.FileInputStream
+import java.io.FileReader
+import java.util.Properties
 import javax.xml.namespace.QName
 import javax.xml.transform.stream.StreamSource
 
 class XMLSchemaCore {
     private val schemaElements: MutableList<XmlSchemaElement> = mutableListOf() // FIXME: what is it for?
+    val xsdProperties = Properties().also { it.load(FileReader("xsds.properties")) }
 
-    fun getXSDElements(xsdPath: String): Map<QName, List<MyXmlElement>> {
+    fun getXSDElements(xsdPaths: Collection<String>): Map<QName, List<XmlElementWrapper>> {
         val xmlSchemaCollection = XmlSchemaCollection()
-        val xsdElements: MutableMap<QName, MutableList<MyXmlElement>> = HashMap()
+        val xsdElements: MutableMap<QName, MutableList<XmlElementWrapper>> = HashMap()
 
-        // Schema contains the complete XSD content which needs to be parsed
-        val schema: XmlSchema = xmlSchemaCollection.read(StreamSource(FileInputStream(xsdPath)))
+        xsdPaths.forEach { xsdPath ->
+            // Schema contains the complete XSD content which needs to be parsed
+            val schema: XmlSchema = xmlSchemaCollection.read(StreamSource(FileInputStream(xsdPath)))
 
-        // Get the root element from XSD
-        val entry: Map.Entry<QName, XmlSchemaElement> = schema.elements.iterator().next()
-        val rootElement: QName = entry.key
+            // TODO: make schema of URI
 
-        // Get all the elements based on the parent element
-        val childElement: XmlSchemaElement = xmlSchemaCollection.getElementByQName(rootElement)
+            // Get the root element from XSD
+            val entry: Map.Entry<QName, XmlSchemaElement> = schema.elements.iterator().next()
+            val rootElement: QName = entry.key
 
-        // Call method to get all the child elements
-        getChildElementNames(childElement, xsdElements)
+            // Get all the elements based on the parent element
+            val childElement: XmlSchemaElement = xmlSchemaCollection.getElementByQName(rootElement)
+
+            // Call method to get all the child elements
+            xsdElements.getChildElementNames(childElement)
+        }
 
         return xsdElements
     }
 
-    private fun getChildElementNames(element: XmlSchemaElement?, xsdElements: MutableMap<QName, MutableList<MyXmlElement>>) {
+    private fun MutableMap<QName, MutableList<XmlElementWrapper>>.getChildElementNames(element: XmlSchemaElement?) {
         val elementType: XmlSchemaType? = element?.schemaType
 
         if (elementType is XmlSchemaComplexType) {
@@ -41,9 +48,9 @@ class XMLSchemaCore {
                    itemElements.forEach {
                        schemaElements.add(it)
 
-                       xsdElements.addChild(element.qName, MyXmlElement(it))
+                       addChild(element.qName, XmlElementWrapper(it))
                        // Call method recursively to get all subsequent element
-                       getChildElementNames(it, xsdElements)
+                       getChildElementNames(it)
                        schemaElements.clear()
                    }
                 }
@@ -63,22 +70,10 @@ class XMLSchemaCore {
         }
     }
 
-    private fun MutableMap<QName, MutableList<MyXmlElement>>.addChild(qName: QName, child: MyXmlElement) {
-        val values: MutableList<MyXmlElement> = this[qName] ?: ArrayList()
+    private fun MutableMap<QName, MutableList<XmlElementWrapper>>.addChild(qName: QName, child: XmlElementWrapper) {
+        val values: MutableList<XmlElementWrapper> = this[qName] ?: ArrayList()
 
         values.add(child)
         this[qName] = values;
-    }
-
-    class MyXmlElement(element: XmlSchemaElement) {
-        private val type: XmlSchemaType = element.schemaType
-
-        val qName = element.qName
-
-        val elementType: ElementType = when {
-                type !is XmlSchemaComplexType -> ElementType.SIMPLE_VALUE
-                element.maxOccurs > 1 -> ElementType.LIST_VALUE
-                else -> ElementType.MESSAGE_VALUE
-            }
     }
 }

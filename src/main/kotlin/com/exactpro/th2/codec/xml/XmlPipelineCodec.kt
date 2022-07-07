@@ -19,14 +19,12 @@ import StreamReaderDelegateDecorator
 import com.exactpro.th2.codec.DecodeException
 import com.exactpro.th2.codec.api.IPipelineCodec
 import com.exactpro.th2.codec.xml.utils.toMap
-import com.exactpro.th2.codec.xml.utils.toProto
 import com.exactpro.th2.codec.xml.xsd.XsdErrorHandler
 import com.exactpro.th2.codec.xml.xsd.XsdValidator
 import com.exactpro.th2.common.grpc.AnyMessage
 import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.MessageGroup
 import com.exactpro.th2.common.grpc.RawMessage
-import com.exactpro.th2.common.message.logId
 import com.exactpro.th2.common.message.messageType
 import com.exactpro.th2.common.message.toJson
 import com.github.underscore.lodash.Xml
@@ -34,12 +32,10 @@ import com.google.protobuf.ByteString
 import org.apache.tika.io.IOUtils
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import java.io.File
 import java.nio.charset.Charset
 import java.nio.file.Path
 import javax.xml.XMLConstants
 import javax.xml.stream.XMLInputFactory
-import javax.xml.transform.stax.StAXSource
 import javax.xml.validation.SchemaFactory
 
 open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, private val xsdMap: Map<String, Path>)  : IPipelineCodec {
@@ -111,12 +107,13 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, priv
     private fun decodeOne(rawMessage: RawMessage): Message {
         try {
             val xmlString = rawMessage.body.toStringUtf8()
-//            val schemaLocations = getSchemaLocations(rawMessage)
 
             val reader = StreamReaderDelegateDecorator(
                 XML_INPUT_FACTORY.createXMLStreamReader(IOUtils.toInputStream(xmlString)),
                 rawMessage,
+
                 xsdMap
+//            xsdElements
             )
 
             try {
@@ -129,36 +126,10 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, priv
                 reader.clearElements()
                 reader.close()
             }
-
-
-//            @Suppress("UNCHECKED_CAST")
-//            val map = Xml.fromXml(xmlString) as MutableMap<String, *>
-//
-//            LOGGER.trace("Result of the 'Xml.fromXml' method is ${map.keys} for $xmlString")
-//            map -= STANDALONE
-//            map -= ENCODING
-//
-//            if (OMIT_XML_DECLARATION in map) {
-//                // U library will tell by this option is there no declaration
-//                check(!settings.expectsDeclaration || map[OMIT_XML_DECLARATION] == NO) { "Expecting declaration inside xml data" }
-//                map -= OMIT_XML_DECLARATION
-//            }
-//
-//            if (map.size > 1) {
-//                error("There was more than one root node in processed xml, result json has [${map.size}]: ${map.keys.joinToString(", ")}")
-//            }
-//
-//            val msgType: String = pointer?.let { map.getNode<String>(it) } ?: map.keys.first()
-//
-//            return map.toProto(msgType, rawMessage)
         } catch (e: Exception) {
             throw DecodeException("Can not decode message. Can not parse XML. ${rawMessage.body.toStringUtf8()}", e)
         }
     }
-
-//    private fun getSchemaLocations(rawMessage: RawMessage): List<String> {
-//
-//    }
 
     private inline fun <reified T>Map<*,*>.getNode(pointer: List<String>): T {
         var current: Any = this
@@ -168,14 +139,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, priv
         }
         return current as T
     }
-
-    private fun getSchemaFile(rawMessage: RawMessage): File? {
-        val body = rawMessage.body.toStringUtf8()
-        val start = body.indexOf("schemaLocation=\"") + 16
-        val end = body.substring(start).indexOf("\"") + start
-
-        return if (start != -1) { File(body.substring(start, end)) } else { null }
-    }
+    private class SchemaLocation(val value: String, val nextStartIndex: Int = 0)
 
     companion object {
         private val LOGGER: Logger = LoggerFactory.getLogger(XmlPipelineCodec::class.java)
