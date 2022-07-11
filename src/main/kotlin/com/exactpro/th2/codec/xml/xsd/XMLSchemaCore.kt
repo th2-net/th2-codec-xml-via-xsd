@@ -1,6 +1,16 @@
 package com.exactpro.th2.codec.xml.xsd
 
-import org.apache.ws.commons.schema.*
+import org.apache.ws.commons.schema.XmlSchema
+import org.apache.ws.commons.schema.XmlSchemaAny
+import org.apache.ws.commons.schema.XmlSchemaChoice
+import org.apache.ws.commons.schema.XmlSchemaCollection
+import org.apache.ws.commons.schema.XmlSchemaComplexType
+import org.apache.ws.commons.schema.XmlSchemaElement
+import org.apache.ws.commons.schema.XmlSchemaParticle
+import org.apache.ws.commons.schema.XmlSchemaSequence
+import org.apache.ws.commons.schema.XmlSchemaSequenceMember
+import org.apache.ws.commons.schema.XmlSchemaSimpleType
+import org.apache.ws.commons.schema.XmlSchemaType
 import java.io.FileInputStream
 import java.io.FileReader
 import java.util.Properties
@@ -9,7 +19,7 @@ import javax.xml.transform.stream.StreamSource
 
 class XMLSchemaCore {
     private val schemaElements: MutableList<XmlSchemaElement> = mutableListOf() // FIXME: what is it for?
-    val xsdProperties = Properties().also { it.load(FileReader("xsds.properties")) }
+    val xsdProperties = Properties().also { it.load(FileReader("src/main/resources/xsds.properties")) }
 
     fun getXSDElements(xsdPaths: Collection<String>): Map<QName, List<XmlElementWrapper>> {
         val xmlSchemaCollection = XmlSchemaCollection()
@@ -19,11 +29,13 @@ class XMLSchemaCore {
             // Schema contains the complete XSD content which needs to be parsed
             val schema: XmlSchema = xmlSchemaCollection.read(StreamSource(FileInputStream(xsdPath)))
 
-            // TODO: make schema of URI
-
             // Get the root element from XSD
             val entry: Map.Entry<QName, XmlSchemaElement> = schema.elements.iterator().next()
             val rootElement: QName = entry.key
+
+            println("Entry: ${entry.key}: ${entry.value}")
+
+            xsdElements[rootElement] = mutableListOf(XmlElementWrapper(entry.value))
 
             // Get all the elements based on the parent element
             val childElement: XmlSchemaElement = xmlSchemaCollection.getElementByQName(rootElement)
@@ -31,6 +43,7 @@ class XMLSchemaCore {
             // Call method to get all the child elements
             xsdElements.getChildElementNames(childElement)
         }
+        xsdElements.forEach { el -> println("XsdElement: ${el.key}: ${el.value}") }
 
         return xsdElements
     }
@@ -65,7 +78,7 @@ class XMLSchemaCore {
             is XmlSchemaElement -> listOf(item)
             is XmlSchemaChoice -> item.items.map { it as XmlSchemaElement }
             is XmlSchemaSequence -> item.items.map { it as XmlSchemaElement }
-            is XmlSchemaAny -> emptyList()
+            is XmlSchemaAny -> emptyList() // FIXME: it's not supposed to be empty
             else -> { throw IllegalArgumentException("Not a valid type of $item") }
         }
     }

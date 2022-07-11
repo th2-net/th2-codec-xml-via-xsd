@@ -19,6 +19,7 @@ import StreamReaderDelegateDecorator
 import com.exactpro.th2.codec.DecodeException
 import com.exactpro.th2.codec.api.IPipelineCodec
 import com.exactpro.th2.codec.xml.utils.toMap
+import com.exactpro.th2.codec.xml.xsd.XMLSchemaCore
 import com.exactpro.th2.codec.xml.xsd.XsdErrorHandler
 import com.exactpro.th2.codec.xml.xsd.XsdValidator
 import com.exactpro.th2.common.grpc.AnyMessage
@@ -34,6 +35,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.nio.charset.Charset
 import java.nio.file.Path
+import java.util.*
 import javax.xml.XMLConstants
 import javax.xml.stream.XMLInputFactory
 import javax.xml.validation.SchemaFactory
@@ -43,6 +45,8 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, priv
     private val pointer = settings.typePointer?.split("/")?.filterNot { it.isBlank() }
     private var xmlCharset: Charset = Charsets.UTF_8
     private val oldValidator = XsdValidator(xsdMap, settings.dirtyValidation)
+    private val xmlSchemaCore = XMLSchemaCore()
+//    private val xsdElements = xmlSchemaCore.getXSDElements(xsdMap.values.map { it.toString() }).toMutableMap()
 
     override fun encode(messageGroup: MessageGroup): MessageGroup {
         val messages = messageGroup.messagesList
@@ -107,13 +111,14 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, priv
     private fun decodeOne(rawMessage: RawMessage): Message {
         try {
             val xmlString = rawMessage.body.toStringUtf8()
+//            val xmlString = String(Base64.getDecoder().decode(rawMessage.body.toStringUtf8()))
 
             val reader = StreamReaderDelegateDecorator(
                 XML_INPUT_FACTORY.createXMLStreamReader(IOUtils.toInputStream(xmlString)),
                 rawMessage,
-
-                xsdMap
-//            xsdElements
+                xsdMap,
+                xmlSchemaCore,
+//                xsdElements
             )
 
             try {

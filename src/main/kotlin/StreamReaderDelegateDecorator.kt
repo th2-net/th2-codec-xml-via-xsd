@@ -3,6 +3,7 @@ import com.exactpro.th2.codec.xml.xsd.XmlElementWrapper
 import com.exactpro.th2.common.grpc.ListValue
 import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.RawMessage
+import com.exactpro.th2.common.grpc.Value
 import mu.KotlinLogging
 import java.util.Stack
 import javax.xml.namespace.QName
@@ -25,7 +26,10 @@ import java.nio.file.Path
 
 class StreamReaderDelegateDecorator(reader: XMLStreamReader,
                                     private val rawMessage: RawMessage,
-                                    private val xsdMap: Map<String, Path>) : StreamReaderDelegate(reader) {
+                                    private val xsdMap: Map<String, Path>,
+                                    private val xmlSchemaCore: XMLSchemaCore,
+//                                    private val xsdElements: MutableMap<QName, List<XmlElementWrapper>>
+                                    ) : StreamReaderDelegate(reader) {
     private val messageBuilders = mutableMapOf<String, MessageOrBuilder>()
     private val listValueBuilders = mutableMapOf<String, ListValue.Builder>()
 
@@ -34,13 +38,10 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
     private val metadataBuilder = messageBuilder.metadataBuilder
     private var foundMsgType = false
 
-    private val xmlSchemaCore = XMLSchemaCore()
-
-    private val xsdElements: MutableMap<QName, List<XmlElementWrapper>> =
-        xmlSchemaCore.getXSDElements(xsdMap.values.map { it.toString() }).toMutableMap() // = mutableMapOf<QName, List<XmlElementWrapper>>()
-
     // FIXME: figure out something better
-    private val allElements = xsdElements.values.flatten().associate { it.qName to it.elementType }.toMutableMap()
+//    private val allElements = xsdElements.values.flatten().associate { it.qName to it.elementType }.toMutableMap()
+    private val allElements = mutableMapOf<QName, Value.KindCase>()
+    private val xsdElements = mutableMapOf<QName, List<XmlElementWrapper>>()
 
     @Throws(XMLStreamException::class)
     override fun next(): Int {
@@ -54,9 +55,10 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
 
                 for (i in 0 until attributeCount) {
                     val attributeName = getAttributeName(i).localPart
+                    val attributeValue = getAttributeValue(i)
 
-                    if (attributeName.endsWith("schemaLocation") || attributeName.equals("xmlns:ds")) {
-                        cacheXsdFromAttribute(attributeName)
+                    if (attributeName == "schemaLocation" || attributeName == "xmlns:ds") {
+                        cacheXsdFromAttribute(attributeName, attributeValue)
                     }
                 }
 
@@ -82,7 +84,8 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
 //                        messageBuilder[localName] = listValue()
                         listValueBuilders[localName] = listValue()
                     }
-                    else -> { throw java.lang.IllegalArgumentException("Element is not a simpleValue, messageValue or listValue") }
+                    null -> { throw IllegalArgumentException("There's no element for $qName name") }
+                    else -> { throw IllegalArgumentException("Element ${allElements[qName]} is not a simpleValue, messageValue or listValue") }
                 }
 
                 // TODO: also use pointer
@@ -155,10 +158,14 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
         }
     }
 
-    private fun cacheXsdFromAttribute(attributeName: String) {
+    private fun cacheXsdFromAttribute(attributeName: String, attributeValue: String) {
         val props = xmlSchemaCore.xsdProperties
 
-        val xsdFileName = props.getProperty(attributeName.substring(18).replace('/', '_'))
+        val xsdFileName = if (attributeName == "xmlns:ds") {
+            props.getProperty(attributeValue.substring(18).replace('/', '_'))
+        } else {
+            "tmp/" + attributeValue.split(' ')[1]
+        }
 
         xmlSchemaCore.getXSDElements(listOf(xsdFileName)).forEach {
             xsdElements.putIfAbsent(it.key, it.value)
