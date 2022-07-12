@@ -29,19 +29,30 @@ class XMLSchemaCore {
             // Schema contains the complete XSD content which needs to be parsed
             val schema: XmlSchema = xmlSchemaCollection.read(StreamSource(FileInputStream(xsdPath)))
 
-            // Get the root element from XSD
-            val entry: Map.Entry<QName, XmlSchemaElement> = schema.elements.iterator().next()
-            val rootElement: QName = entry.key
+            schema.elements.forEach{ element ->
+//                xsdElements[element.key] = mutableListOf(XmlElementWrapper(element.value))
+                xsdElements.putIfAbsent(element.key, mutableListOf(XmlElementWrapper(element.value)))
 
-            println("Entry: ${entry.key}: ${entry.value}")
+                // Get all the elements based on the parent element
+                val childElement: XmlSchemaElement = xmlSchemaCollection.getElementByQName(element.key)
 
-            xsdElements[rootElement] = mutableListOf(XmlElementWrapper(entry.value))
+                // Call method to get all the child elements
+                xsdElements.getChildElementNames(childElement)
+            }
 
-            // Get all the elements based on the parent element
-            val childElement: XmlSchemaElement = xmlSchemaCollection.getElementByQName(rootElement)
-
-            // Call method to get all the child elements
-            xsdElements.getChildElementNames(childElement)
+//            // Get the root element from XSD
+//            val entry: Map.Entry<QName, XmlSchemaElement> = schema.elements.iterator().next()
+//            val rootElement: QName = entry.key
+//
+//            println("Root entry: ${entry.key}: ${entry.value}")
+//
+//            xsdElements[rootElement] = mutableListOf(XmlElementWrapper(entry.value))
+//
+//            // Get all the elements based on the parent element
+//            val childElement: XmlSchemaElement = xmlSchemaCollection.getElementByQName(rootElement)
+//
+//            // Call method to get all the child elements
+//            xsdElements.getChildElementNames(childElement)
         }
         xsdElements.forEach { el -> println("XsdElement: ${el.key}: ${el.value}") }
 
@@ -68,17 +79,17 @@ class XMLSchemaCore {
                    }
                 }
             }
-        } else if (elementType is XmlSchemaSimpleType) {
-
         }
     }
 
     private fun getItemElements(item: XmlSchemaSequenceMember): Collection<XmlSchemaElement> {
         return when (item) {
             is XmlSchemaElement -> listOf(item)
-            is XmlSchemaChoice -> item.items.map { it as XmlSchemaElement }
+            is XmlSchemaChoice -> item.items.mapNotNull {
+                if (it is XmlSchemaElement) { it } else { null }
+            }
             is XmlSchemaSequence -> item.items.map { it as XmlSchemaElement }
-            is XmlSchemaAny -> emptyList() // FIXME: it's not supposed to be empty
+            is XmlSchemaAny -> emptyList()
             else -> { throw IllegalArgumentException("Not a valid type of $item") }
         }
     }

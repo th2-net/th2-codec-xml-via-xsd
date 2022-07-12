@@ -16,12 +16,10 @@ import com.exactpro.th2.common.grpc.Value.KindCase.LIST_VALUE
 import com.exactpro.th2.common.message.addField
 import com.exactpro.th2.common.message.message
 import com.exactpro.th2.common.message.set
-import com.exactpro.th2.common.message.get
 import com.exactpro.th2.common.message.updateField
 import com.exactpro.th2.common.value.add
 import com.exactpro.th2.common.value.listValue
 import com.exactpro.th2.common.value.toValue
-import com.google.protobuf.MessageOrBuilder
 import java.nio.file.Path
 
 class StreamReaderDelegateDecorator(reader: XMLStreamReader,
@@ -30,8 +28,8 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
                                     private val xmlSchemaCore: XMLSchemaCore,
 //                                    private val xsdElements: MutableMap<QName, List<XmlElementWrapper>>
                                     ) : StreamReaderDelegate(reader) {
-    private val messageBuilders = mutableMapOf<String, MessageOrBuilder>()
     private val listValueBuilders = mutableMapOf<String, ListValue.Builder>()
+    private val messageValueBuilders = mutableMapOf<String, Message.Builder>()
 
     private val elementStack = Stack<QName>()
     private val messageBuilder = message()
@@ -46,19 +44,23 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
     @Throws(XMLStreamException::class)
     override fun next(): Int {
         val n: Int = super.next()
-        val qName = QName(namespaceURI, localName)
 
         when (n) {
             START_ELEMENT -> {
+                val qName = QName(namespaceURI, localName)
 
                 elementStack.push(qName)
+
+                if (namespaceURI.startsWith("http")) {
+                    cacheXsdFromNamespaceURI(namespaceURI)
+                }
 
                 for (i in 0 until attributeCount) {
                     val attributeName = getAttributeName(i).localPart
                     val attributeValue = getAttributeValue(i)
 
-                    if (attributeName == "schemaLocation" || attributeName == "xmlns:ds") {
-                        cacheXsdFromAttribute(attributeName, attributeValue)
+                    if (attributeName == "schemaLocation") {
+                        cacheXsdFromAttribute(attributeValue)
                     }
                 }
 
@@ -77,14 +79,15 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
                         }
 
 //                        messageBuilders[localName] = builder
-                        messageBuilder[localName] = builder
+//                        messageBuilder[localName] = builder
+                        messageValueBuilders[localName] = builder
                     }
                     LIST_VALUE -> {
 //                        messageBuilders[localName] = listValue().add(localName.toValue())
 //                        messageBuilder[localName] = listValue()
                         listValueBuilders[localName] = listValue()
                     }
-                    null -> { throw IllegalArgumentException("There's no element for $qName name") }
+                    null -> { throw IllegalArgumentException("There's no element for $qName") }
                     else -> { throw IllegalArgumentException("Element ${allElements[qName]} is not a simpleValue, messageValue or listValue") }
                 }
 
@@ -96,24 +99,26 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
 
             }
             CHARACTERS -> {
-               if (text.isNotBlank()) {
-                   val element = elementStack.peek()
+                if (text.isNotBlank()) {
+                    val element = elementStack.peek()
 
-                   when(allElements[qName]) {
+                   when(allElements[element]) {
                        SIMPLE_VALUE -> {
 //                           messageBuilders[element.localPart] = text.toValue()
                            messageBuilder[element.localPart] = text.toValue()
                        }
                        MESSAGE_VALUE -> {
 //                           val builder = messageBuilders[element.localPart] as Message.Builder
-                           val builder = messageBuilder[element.localPart] as Message.Builder
-                           builder.updateField(element.localPart) { setSimpleValue(text) }
+//                           val builder = messageBuilder[element.localPart] as Message.Builder
+//                           builder.updateField(element.localPart) { setSimpleValue(text) }
+
+                           messageValueBuilders[element.localPart]?.updateField(element.localPart) { setSimpleValue(text) }
                        }
                        LIST_VALUE -> {
 //                           (messageBuilder[localName]).add(localName.toValue())
                            checkNotNull(listValueBuilders[localName]).add(text.toValue())
                        }
-                       else -> { throw java.lang.IllegalArgumentException("Element is not a simpleValue, messageValue or listValue") }
+                       else -> { throw IllegalArgumentException("Element is not a simpleValue, messageValue or listValue") }
                    }
                }
             }
@@ -143,9 +148,15 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
         listValueBuilders.forEach {
             messageBuilder[it.key] = it.value
         }
-        
+
+        messageValueBuilders.forEach {
+            messageBuilder[it.key] = it.value
+        }
+
         val message = messageBuilder.build()
         messageBuilder.clear()
+        listValueBuilders.clear()
+        messageValueBuilders.clear()
 
         return message
     }
@@ -158,14 +169,23 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
         }
     }
 
-    private fun cacheXsdFromAttribute(attributeName: String, attributeValue: String) {
+    private fun cacheXsdFromAttribute(attributeValue: String) {
+        val xsdFileName = "tmp/" + attributeValue.split(' ')[1]
+
+        xmlSchemaCore.getXSDElements(listOf(xsdFileName)).forEach {
+            xsdElements.putIfAbsent(it.key, it.value)
+        }
+
+        // FIXME: figure out something better
+        xsdElements.values.flatten().associate { it.qName to it.elementType }.forEach {
+            allElements.putIfAbsent(it.key, it.value)
+        }
+    }
+
+    private fun cacheXsdFromNamespaceURI(namespaceURI: String) {
         val props = xmlSchemaCore.xsdProperties
 
-        val xsdFileName = if (attributeName == "xmlns:ds") {
-            props.getProperty(attributeValue.substring(18).replace('/', '_'))
-        } else {
-            "tmp/" + attributeValue.split(' ')[1]
-        }
+        val xsdFileName = props.getProperty(namespaceURI.substring(7))
 
         xmlSchemaCore.getXSDElements(listOf(xsdFileName)).forEach {
             xsdElements.putIfAbsent(it.key, it.value)
