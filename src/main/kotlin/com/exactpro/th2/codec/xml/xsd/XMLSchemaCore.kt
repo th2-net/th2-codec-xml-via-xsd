@@ -9,8 +9,6 @@ import org.apache.ws.commons.schema.XmlSchemaElement
 import org.apache.ws.commons.schema.XmlSchemaParticle
 import org.apache.ws.commons.schema.XmlSchemaSequence
 import org.apache.ws.commons.schema.XmlSchemaSequenceMember
-import org.apache.ws.commons.schema.XmlSchemaSimpleType
-import org.apache.ws.commons.schema.XmlSchemaType
 import java.io.FileInputStream
 import java.io.FileReader
 import java.util.Properties
@@ -29,38 +27,25 @@ class XMLSchemaCore {
             // Schema contains the complete XSD content which needs to be parsed
             val schema: XmlSchema = xmlSchemaCollection.read(StreamSource(FileInputStream(xsdPath)))
 
-            schema.elements.forEach{ element ->
-//                xsdElements[element.key] = mutableListOf(XmlElementWrapper(element.value))
-                xsdElements.putIfAbsent(element.key, mutableListOf(XmlElementWrapper(element.value)))
+            schema.elements.forEach{
+                val element = XmlElementWrapper(it.value)
+                val qName = it.key
+
+                xsdElements.putIfAbsent(qName, mutableListOf(element))
 
                 // Get all the elements based on the parent element
-                val childElement: XmlSchemaElement = xmlSchemaCollection.getElementByQName(element.key)
+                val childElement: XmlSchemaElement = xmlSchemaCollection.getElementByQName(qName)
 
                 // Call method to get all the child elements
                 xsdElements.getChildElementNames(childElement)
             }
-
-//            // Get the root element from XSD
-//            val entry: Map.Entry<QName, XmlSchemaElement> = schema.elements.iterator().next()
-//            val rootElement: QName = entry.key
-//
-//            println("Root entry: ${entry.key}: ${entry.value}")
-//
-//            xsdElements[rootElement] = mutableListOf(XmlElementWrapper(entry.value))
-//
-//            // Get all the elements based on the parent element
-//            val childElement: XmlSchemaElement = xmlSchemaCollection.getElementByQName(rootElement)
-//
-//            // Call method to get all the child elements
-//            xsdElements.getChildElementNames(childElement)
         }
-        xsdElements.forEach { el -> println("XsdElement: ${el.key}: ${el.value}") }
 
         return xsdElements
     }
 
-    private fun MutableMap<QName, MutableList<XmlElementWrapper>>.getChildElementNames(element: XmlSchemaElement?) {
-        val elementType: XmlSchemaType? = element?.schemaType
+    private fun MutableMap<QName, MutableList<XmlElementWrapper>>.getChildElementNames(element: XmlSchemaElement) {
+        val elementType = element.schemaType
 
         if (elementType is XmlSchemaComplexType) {
             val particle: XmlSchemaParticle? = elementType.particle
@@ -98,6 +83,6 @@ class XMLSchemaCore {
         val values: MutableList<XmlElementWrapper> = this[qName] ?: ArrayList()
 
         values.add(child)
-        this[qName] = values;
+        this[qName] = values
     }
 }
