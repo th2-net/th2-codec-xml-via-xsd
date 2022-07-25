@@ -1,10 +1,18 @@
 package com.exactpro.th2.codec.xml.xsd
 
-import org.apache.ws.commons.schema.*
+import org.apache.ws.commons.schema.XmlSchema
+import org.apache.ws.commons.schema.XmlSchemaAny
+import org.apache.ws.commons.schema.XmlSchemaChoice
+import org.apache.ws.commons.schema.XmlSchemaCollection
+import org.apache.ws.commons.schema.XmlSchemaComplexType
+import org.apache.ws.commons.schema.XmlSchemaElement
+import org.apache.ws.commons.schema.XmlSchemaParticle
+import org.apache.ws.commons.schema.XmlSchemaSequence
 import org.apache.ws.commons.schema.utils.XmlSchemaObjectBase
 import java.io.FileInputStream
 import java.io.FileReader
-import java.util.*
+import java.util.LinkedList
+import java.util.Properties
 import javax.xml.namespace.QName
 import javax.xml.transform.stream.StreamSource
 import kotlin.collections.ArrayList
@@ -81,44 +89,9 @@ class XMLSchemaCore {
             is XmlSchemaSequence -> item.items.mapNotNull {
                 if (it is XmlSchemaElement) { it } else { null }
             }
-            is XmlSchemaAny -> {
-                val targetNamespace = item.targetNamespace
-
-                if (targetNamespace.startsWith("http") && !cachedURIXsds.contains(targetNamespace)) {
-                    cachedURIXsds.add(targetNamespace)
-                    // Add all contents to xsdElements and return elements
-                    return xsdElements.cacheXsdFromNamespaceURI(item)
-                } else {
-                    emptyList()
-                }
-            }
+            is XmlSchemaAny -> emptyList()
             else -> { throw IllegalArgumentException("Not a valid type of $item") }
         }
-    }
-
-    private fun MutableMap<QName, MutableList<XmlElementWrapper>>.cacheXsdFromNamespaceURI(item: XmlSchemaAny): Collection<XmlSchemaElement> {
-        val targetNamespace = item.targetNamespace
-
-        val xsdFileName = xsdProperties.getProperty(targetNamespace.substring(7))
-
-        val xmlSchemaCollection = XmlSchemaCollection()
-
-        val schema: XmlSchema = xmlSchemaCollection.read(StreamSource(FileInputStream(xsdFileName)))
-
-        schema.elements.forEach {
-            val element = XmlElementWrapper(it.value)
-            val qName = it.key
-
-            putIfAbsent(qName, mutableListOf(element))
-
-            // Get all the elements based on the parent element
-            val childElement: XmlSchemaElement = xmlSchemaCollection.getElementByQName(qName)
-
-            // Call method to get all the child elements
-            getChildElementNames(childElement)
-        }
-
-        return schema.elements.values
     }
 
     private fun MutableMap<QName, MutableList<XmlElementWrapper>>.addChild(qName: QName, child: XmlElementWrapper) {

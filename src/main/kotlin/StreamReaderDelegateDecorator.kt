@@ -22,6 +22,7 @@ import com.exactpro.th2.common.value.toValue
 import java.nio.file.Path
 import java.util.*
 import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
 
 class StreamReaderDelegateDecorator(reader: XMLStreamReader,
                                     private val rawMessage: RawMessage,
@@ -36,6 +37,9 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
     private val simpleValueStack = Stack<Value.Builder>()
     private val messageValueStack = Stack<Message.Builder>()
     private val listValueStack = Stack<ListValue.Builder>()
+
+    // key - qName of the parent
+    private val msgBuilderWrapperMap = HashMap<QName, MessageBuilderWrapper>()
 
     private lateinit var messageBuilder: Message.Builder
 
@@ -70,14 +74,21 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
                     }
                 }
 
-                when(allElements[qName]) {
+                val elementType = if (allElements[qName] != KIND_NOT_SET) {
+                    allElements[qName]
+                } else {
+                    checkNotNull(xsdElements[elementStack[elementStack.lastIndex - 1]]?.find { it.qName == qName }).elementType
+                }
+
+                println("START. $qName - $elementType")
+
+                when(elementType) {
                     SIMPLE_VALUE -> {
                         elementTypeStack.push(SIMPLE_VALUE)
                     }
                     MESSAGE_VALUE -> {
                         elementTypeStack.push(MESSAGE_VALUE)
 
-//                        val builder = message().addField(localName, null)
                         val builder = message()
 
                         if (attributeCount > 0) {
@@ -87,46 +98,31 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
                         messageValueStack.push(builder)
                     }
                     LIST_VALUE -> {
-                        val builder = listValue()
+                        elementTypeStack.push(LIST_VALUE)
+
+                        val parentName = checkNotNull(xsdElements[elementStack[elementStack.lastIndex - 1]]?.find { it.qName == qName }).qName
+
+                        val msgBuilderWrapper: MessageBuilderWrapper = if (msgBuilderWrapperMap.contains(parentName)) {
+                            checkNotNull(msgBuilderWrapperMap[parentName])
+                        } else {
+                            MessageBuilderWrapper(qName).also {
+                                msgBuilderWrapperMap[qName] = it
+                            }
+                        }
+
+                        val listBuilder = if (msgBuilderWrapper.contains(qName)) {
+                            checkNotNull(msgBuilderWrapper[qName])
+                        } else {
+                            val list = listValue()
+                            msgBuilderWrapper[qName] = list
+                            list
+                        }
 
                         if (attributeCount > 0) {
-                            writeAttributes(builder)
+                            writeAttributes(listBuilder)
                         }
 
-                        elementTypeStack.push(LIST_VALUE)
-                        listValueStack.push(builder)
-                    }
-                    KIND_NOT_SET -> {
-                        val element = checkNotNull(xsdElements[elementStack[elementStack.lastIndex - 1]]?.find { it.qName == qName })
-
-                        when (element.elementType) {
-                            SIMPLE_VALUE -> {
-                                elementTypeStack.push(SIMPLE_VALUE)
-                            }
-                            MESSAGE_VALUE -> {
-                                elementTypeStack.push(MESSAGE_VALUE)
-
-//                                val builder = message().addField(localName, null)
-                                val builder = message()
-
-                                if (attributeCount > 0) {
-                                    writeAttributes(builder)
-                                }
-
-                                messageValueStack.push(builder)
-                            }
-                            LIST_VALUE -> {
-                                val builder = listValue()
-
-                                if (attributeCount > 0) {
-                                    writeAttributes(builder)
-                                }
-
-                                elementTypeStack.push(LIST_VALUE)
-                                listValueStack.push(builder)
-                            }
-                            else -> { throw IllegalArgumentException("Element $qName is not a simpleValue, messageValue or listValue") }
-                        }
+                        listValueStack.push(listBuilder)
                     }
                     null -> { throw IllegalArgumentException("There's no element for $qName") }
                     else -> { throw IllegalArgumentException("Element $qName is not a simpleValue, messageValue or listValue") }
@@ -140,43 +136,25 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
             }
             CHARACTERS -> {
                 if (text.isNotBlank()) {
-                    val elementName = elementStack[elementStack.lastIndex]
-                    val localElementName = elementName.localPart
+                    val qName = elementStack[elementStack.lastIndex]
+                    val localElementName = qName.localPart
 
-                    when(allElements[elementName]) {
+                    val elementType = if (allElements[qName] != KIND_NOT_SET) {
+                        allElements[qName]
+                    } else {
+                        checkNotNull(xsdElements[elementStack[elementStack.lastIndex - 1]]?.find { it.qName == qName }).elementType
+                    }
+
+                    println("CHARACTERS. $qName - $elementType")
+
+                    when(elementType) {
                        SIMPLE_VALUE -> {
                            simpleValueStack.add(Value.newBuilder().setSimpleValue(text))
                        }
                        MESSAGE_VALUE -> {
                            val builder = messageValueStack.peek()
-//                           builder.updateField(localElementName) { setSimpleValue(text) }
                            builder[localElementName] = text.toValue()
                        }
-                       LIST_VALUE -> { // FIXME: mb it's not possible
-                           val builder = listValueStack.peek()
-
-                           builder.add(text.toValue())
-                       }
-                        KIND_NOT_SET -> {
-                            val element = checkNotNull(xsdElements[elementStack[elementStack.lastIndex - 1]]?.find { it.qName == elementName })
-
-                            when (element.elementType) {
-                                SIMPLE_VALUE -> {
-                                    simpleValueStack.add(Value.newBuilder().setSimpleValue(text))
-                                }
-                                MESSAGE_VALUE -> {
-                                    val builder = messageValueStack.peek()
-//                                    builder.updateField(localElementName) { setSimpleValue(text) }
-                                    builder[localElementName] = text.toValue()
-                                }
-                                LIST_VALUE -> { // FIXME: mb it's not possible
-                                    val builder = listValueStack.peek()
-
-                                    builder.add(text.toValue())
-                                }
-                                else -> { throw IllegalArgumentException("Element is not a simpleValue, messageValue or listValue") }
-                            }
-                        }
                        else -> { throw IllegalArgumentException("Element is not a simpleValue, messageValue or listValue") }
                    }
                }
@@ -185,14 +163,22 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
                 elementTypeStack.pop()
 
                 if (elementTypeStack.isNotEmpty()) {
-                    val elementName = elementStack.removeLast()
+                    val qName = elementStack.removeLast()
 
                     val parentType = elementTypeStack.peek()
 
-                    when(allElements[elementName]) {
+                    val elementType = if (allElements[qName] != KIND_NOT_SET) {
+                        allElements[qName]
+                    } else {
+                        checkNotNull(xsdElements[elementStack[elementStack.lastIndex]]?.find { it.qName == qName }).elementType
+                    }
+
+                    println("END. $qName - $elementType")
+
+                    when(elementType) {
                         SIMPLE_VALUE -> {
                             if (parentType == MESSAGE_VALUE) {
-                                messageValueStack.peek()[elementName.localPart] = simpleValueStack.pop()
+                                messageValueStack.peek()[qName.localPart] = simpleValueStack.pop()
                             } else {
                                 listValueStack.peek().add(simpleValueStack.pop())
                             }
@@ -200,52 +186,28 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
                         MESSAGE_VALUE -> {
                             if (parentType == MESSAGE_VALUE) {
                                 val message = messageValueStack.pop()
-                                messageValueStack.peek()[elementName.localPart] = message
+                                messageValueStack.peek()[qName.localPart] = message
+
+                                message.addLists(qName)
                             } else {
-                                listValueStack.peek().add(messageValueStack.pop())
+                                val message = messageValueStack.pop()
+                                listValueStack.peek().add(message)
+
+                                message.addLists(qName)
                             }
                         }
                         LIST_VALUE -> {
                             if (parentType == MESSAGE_VALUE) {
-                                messageValueStack.peek()[elementName.localPart] = listValueStack.pop()
+                                val list = listValueStack.pop()
+                                messageValueStack.peek()[qName.localPart] = list
                             } else {
                                 val list = listValueStack.pop()
                                 listValueStack.peek().add(list)
-                            }
-                        }
-                        KIND_NOT_SET -> {
-                            val element = checkNotNull(
-                                xsdElements[elementStack[elementStack.lastIndex]]?.find { it.qName == elementName }
-                            ) { "Element $elementName is not found" }
 
-                            when (element.elementType) {
-                                SIMPLE_VALUE -> {
-                                    if (parentType == MESSAGE_VALUE) {
-                                        messageValueStack.peek()[elementName.localPart] = simpleValueStack.pop()
-                                    } else {
-                                        listValueStack.peek().add(simpleValueStack.pop())
-                                    }
-                                }
-                                MESSAGE_VALUE -> {
-                                    if (parentType == MESSAGE_VALUE) {
-                                        val message = messageValueStack.pop()
-                                        messageValueStack.peek()[elementName.localPart] = message
-                                    } else {
-                                        listValueStack.peek().add(messageValueStack.pop())
-                                    }
-                                }
-                                LIST_VALUE -> {
-                                    if (parentType == MESSAGE_VALUE) {
-                                        messageValueStack.peek()[elementName.localPart] = listValueStack.pop()
-                                    } else {
-                                        val list = listValueStack.pop()
-                                        listValueStack.peek().add(list)
-                                    }
-                                }
-                                else -> { throw IllegalArgumentException("Element $elementName is not a simpleValue, messageValue or listValue") }
+                                list.addLists(qName)
                             }
                         }
-                        else -> { throw IllegalArgumentException("Element $elementName is not a simpleValue, messageValue or listValue") }
+                        else -> { throw IllegalArgumentException("Element $qName is not a simpleValue, messageValue or listValue") }
                     }
                 } else {
                     messageBuilder = messageValueStack.pop()
@@ -273,10 +235,9 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
             messageBuilder.parentEventId = rawMessage.parentEventId
         }
 
-        // TODO: put builders in messageBuilder
-
         val message = messageBuilder.build()
         messageBuilder.clear()
+        msgBuilderWrapperMap.clear()
 
         return message
     }
@@ -301,6 +262,22 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
         listBuilder.add(builder)
     }
 
+    private fun Message.Builder.addLists(qName: QName) {
+        if (msgBuilderWrapperMap.contains(qName)) {
+            checkNotNull(msgBuilderWrapperMap[qName]).listBuilderMap.forEach {
+                this[it.key.toString()] = it.value
+            }
+        }
+    }
+
+    private fun ListValue.Builder.addLists(qName: QName) {
+        if (msgBuilderWrapperMap.contains(qName)) {
+            checkNotNull(msgBuilderWrapperMap[qName]).listBuilderMap.forEach {
+                add(it.value)
+            }
+        }
+    }
+
     private fun cacheXsdFromAttribute(attributeValue: String) {
         val xsdFileName = "tmp/" + attributeValue.split(' ')[1]
 
@@ -308,9 +285,10 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
             xsdElements.putIfAbsent(it.key, it.value)
         }
 
+        // TODO: do it another way
         allElements.clear()
 
-        // FIXME: figure out something better
+        // TODO: figure out something better
         xsdElements.values.flatten().distinct().map { it.qName to it.elementType }
             .forEach { if (!allElements.containsKey(it.first)) allElements[it.first] = it.second else allElements[it.first] = KIND_NOT_SET }
     }
@@ -324,14 +302,27 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
             xsdElements.putIfAbsent(it.key, it.value)
         }
 
+        // TODO: do it another way
         allElements.clear()
 
-        // FIXME: figure out something better
+        // TODO: figure out something better
         xsdElements.values.flatten().distinct().map { it.qName to it.elementType }
             .forEach { if (!allElements.containsKey(it.first)) allElements[it.first] = it.second else allElements[it.first] = KIND_NOT_SET }
     }
 
     companion object {
         private val LOGGER = KotlinLogging.logger { }
+    }
+
+    private inner class MessageBuilderWrapper(qName: QName, val listBuilderMap: MutableMap<QName, ListValue.Builder> = mutableMapOf()) {
+        lateinit var messageBuilder: Message.Builder
+
+        operator fun set(key: QName, value: ListValue.Builder) {
+            listBuilderMap[key] = value
+        }
+
+        fun contains(key: QName): Boolean = listBuilderMap.contains(key)
+
+        operator fun get(key: QName): ListValue.Builder? = listBuilderMap[key]
     }
 }
