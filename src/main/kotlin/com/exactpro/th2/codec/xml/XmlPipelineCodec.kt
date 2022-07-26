@@ -46,7 +46,6 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, priv
     private var xmlCharset: Charset = Charsets.UTF_8
     private val oldValidator = XsdValidator(xsdMap, settings.dirtyValidation)
     private val xmlSchemaCore = XMLSchemaCore()
-//    private val xsdElements = xmlSchemaCore.getXSDElements(xsdMap.values.map { it.toString() }).toMutableMap()
 
     override fun encode(messageGroup: MessageGroup): MessageGroup {
         val messages = messageGroup.messagesList
@@ -111,14 +110,11 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, priv
     private fun decodeOne(rawMessage: RawMessage): Message {
         try {
             val xmlString = rawMessage.body.toStringUtf8()
-//            val xmlString = String(Base64.getDecoder().decode(rawMessage.body.toStringUtf8()))
 
             val reader = StreamReaderDelegateDecorator(
                 XML_INPUT_FACTORY.createXMLStreamReader(IOUtils.toInputStream(xmlString)),
                 rawMessage,
-                xsdMap,
                 xmlSchemaCore,
-//                xsdElements
             )
 
             try {
@@ -144,7 +140,6 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, priv
         }
         return current as T
     }
-    private class SchemaLocation(val value: String, val nextStartIndex: Int = 0)
 
     companion object {
         private val LOGGER: Logger = LoggerFactory.getLogger(XmlPipelineCodec::class.java)

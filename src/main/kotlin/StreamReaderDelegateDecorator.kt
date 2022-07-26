@@ -26,9 +26,7 @@ import kotlin.collections.HashMap
 
 class StreamReaderDelegateDecorator(reader: XMLStreamReader,
                                     private val rawMessage: RawMessage,
-                                    private val xsdMap: Map<String, Path>,
-                                    private val xmlSchemaCore: XMLSchemaCore,
-                                    ) : StreamReaderDelegate(reader) {
+                                    private val xmlSchemaCore: XMLSchemaCore, ) : StreamReaderDelegate(reader) {
     private val elementStack = ArrayList<QName>()
     private val elementTypeStack = Stack<Value.KindCase>()
 
