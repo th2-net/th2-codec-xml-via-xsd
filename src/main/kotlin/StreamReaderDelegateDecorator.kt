@@ -80,8 +80,6 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
                     checkNotNull(xsdElements[elementStack[elementStack.lastIndex - 1]]?.find { it.qName == qName }).elementType
                 }
 
-                println("START. $qName - $elementType")
-
                 when(elementType) {
                     SIMPLE_VALUE -> {
                         elementTypeStack.push(SIMPLE_VALUE)
@@ -145,8 +143,6 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
                         checkNotNull(xsdElements[elementStack[elementStack.lastIndex - 1]]?.find { it.qName == qName }).elementType
                     }
 
-                    println("CHARACTERS. $qName - $elementType")
-
                     when(elementType) {
                        SIMPLE_VALUE -> {
                            simpleValueStack.add(Value.newBuilder().setSimpleValue(text))
@@ -172,8 +168,6 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
                     } else {
                         checkNotNull(xsdElements[elementStack[elementStack.lastIndex]]?.find { it.qName == qName }).elementType
                     }
-
-                    println("END. $qName - $elementType")
 
                     when(elementType) {
                         SIMPLE_VALUE -> {
@@ -280,34 +274,34 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
 
     private fun cacheXsdFromAttribute(attributeValue: String) {
         val xsdFileName = "tmp/" + attributeValue.split(' ')[1]
+        val map = mutableMapOf<QName, Value.KindCase>()
 
         xmlSchemaCore.getXSDElements(xsdFileName).forEach {
             xsdElements.putIfAbsent(it.key, it.value)
         }
 
-        // TODO: do it another way
-        allElements.clear()
-
         // TODO: figure out something better
         xsdElements.values.flatten().distinct().map { it.qName to it.elementType }
-            .forEach { if (!allElements.containsKey(it.first)) allElements[it.first] = it.second else allElements[it.first] = KIND_NOT_SET }
+            .forEach { if (!map.containsKey(it.first)) map[it.first] = it.second else map[it.first] = KIND_NOT_SET }
+
+        allElements.putAll(map)
     }
 
     private fun cacheXsdFromNamespaceURI(namespaceURI: String) {
         val props = xmlSchemaCore.xsdProperties
 
         val xsdFileName = props.getProperty(namespaceURI.substring(7))
+        val map = mutableMapOf<QName, Value.KindCase>()
 
         xmlSchemaCore.getXSDElements(xsdFileName).forEach {
             xsdElements.putIfAbsent(it.key, it.value)
         }
 
-        // TODO: do it another way
-        allElements.clear()
-
         // TODO: figure out something better
         xsdElements.values.flatten().distinct().map { it.qName to it.elementType }
-            .forEach { if (!allElements.containsKey(it.first)) allElements[it.first] = it.second else allElements[it.first] = KIND_NOT_SET }
+            .forEach { if (!map.containsKey(it.first)) map[it.first] = it.second else map[it.first] = KIND_NOT_SET }
+
+        allElements.putAll(map)
     }
 
     companion object {
