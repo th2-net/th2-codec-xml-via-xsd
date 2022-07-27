@@ -15,7 +15,6 @@
 
 package com.exactpro.th2.codec.xml
 
-import StreamReaderDelegateDecorator
 import com.exactpro.th2.codec.DecodeException
 import com.exactpro.th2.codec.api.IPipelineCodec
 import com.exactpro.th2.codec.xml.utils.toMap
@@ -35,7 +34,6 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.nio.charset.Charset
 import java.nio.file.Path
-import java.util.*
 import javax.xml.XMLConstants
 import javax.xml.stream.XMLInputFactory
 import javax.xml.validation.SchemaFactory

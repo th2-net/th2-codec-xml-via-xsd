@@ -1,3 +1,5 @@
+package com.exactpro.th2.codec.xml
+
 import com.exactpro.th2.codec.xml.xsd.XMLSchemaCore
 import com.exactpro.th2.codec.xml.xsd.XmlElementWrapper
 import com.exactpro.th2.common.grpc.ListValue
@@ -19,7 +21,6 @@ import com.exactpro.th2.common.message.set
 import com.exactpro.th2.common.value.add
 import com.exactpro.th2.common.value.listValue
 import com.exactpro.th2.common.value.toValue
-import java.nio.file.Path
 import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
