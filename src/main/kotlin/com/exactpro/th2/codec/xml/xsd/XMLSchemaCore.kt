@@ -21,7 +21,8 @@ import kotlin.collections.HashMap
 class XMLSchemaCore {
     private val schemaElements: MutableList<XmlSchemaElement> = mutableListOf() // FIXME: what is it for?
     private val cachedURIXsds = LinkedList<String>()
-    val xsdProperties = Properties().also { it.load(FileReader("src/main/resources/xsds.properties")) }
+//    val xsdProperties = Properties().also { it.load(FileReader("src/main/resources/xsds.properties")) }
+    val xsdProperties = Properties().also { it.load(Thread.currentThread().contextClassLoader.getResourceAsStream("xsds.properties")) }
 
     private val xsdElements: MutableMap<QName, MutableList<XmlElementWrapper>> = HashMap()
 
