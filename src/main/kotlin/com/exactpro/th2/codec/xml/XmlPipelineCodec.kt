@@ -25,6 +25,7 @@ import com.exactpro.th2.common.grpc.AnyMessage
 import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.MessageGroup
 import com.exactpro.th2.common.grpc.RawMessage
+import com.exactpro.th2.common.message.logId
 import com.exactpro.th2.common.message.messageType
 import com.exactpro.th2.common.message.toJson
 import com.github.underscore.lodash.Xml
@@ -126,7 +127,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, priv
                 reader.close()
             }
         } catch (e: Exception) {
-            throw DecodeException("Can not decode message. Can not parse XML. ${rawMessage.body.toStringUtf8()}", e)
+            throw DecodeException("Can not decode message ${rawMessage.logId}. Can not parse XML. ${rawMessage.body.toStringUtf8()}", e)
         }
     }
 
