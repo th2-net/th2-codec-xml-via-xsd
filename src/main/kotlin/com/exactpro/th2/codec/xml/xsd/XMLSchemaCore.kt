@@ -10,7 +10,6 @@ import org.apache.ws.commons.schema.XmlSchemaParticle
 import org.apache.ws.commons.schema.XmlSchemaSequence
 import org.apache.ws.commons.schema.utils.XmlSchemaObjectBase
 import java.io.FileInputStream
-import java.io.FileReader
 import java.util.LinkedList
 import java.util.Properties
 import javax.xml.namespace.QName
@@ -19,9 +18,7 @@ import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 
 class XMLSchemaCore {
-    private val schemaElements: MutableList<XmlSchemaElement> = mutableListOf() // FIXME: what is it for?
-    private val cachedURIXsds = LinkedList<String>()
-//    val xsdProperties = Properties().also { it.load(FileReader("src/main/resources/xsds.properties")) }
+    private val cachedURIXsds = LinkedList<String>() // TODO: cache URI xsds here
     val xsdProperties = Properties().also { it.load(Thread.currentThread().contextClassLoader.getResourceAsStream("xsds.properties")) }
 
     private val xsdElements: MutableMap<QName, MutableList<XmlElementWrapper>> = HashMap()
@@ -72,12 +69,9 @@ class XMLSchemaCore {
     private fun MutableMap<QName, MutableList<XmlElementWrapper>>.processItemElements(itemElements: Collection<XmlSchemaElement>,
     element: XmlSchemaElement) {
         itemElements.forEach {
-            schemaElements.add(it)
-
             addChild(element.qName, XmlElementWrapper(it))
             // Call method recursively to get all subsequent element
             getChildElementNames(it)
-            schemaElements.clear()
         }
     }
 
