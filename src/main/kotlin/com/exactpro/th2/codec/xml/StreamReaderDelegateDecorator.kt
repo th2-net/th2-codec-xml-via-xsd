@@ -12,22 +12,21 @@ import javax.xml.namespace.QName
 import javax.xml.stream.XMLStreamException
 import javax.xml.stream.XMLStreamReader
 import javax.xml.stream.util.StreamReaderDelegate
-import com.exactpro.th2.common.grpc.Value.KindCase.SIMPLE_VALUE
-import com.exactpro.th2.common.grpc.Value.KindCase.MESSAGE_VALUE
-import com.exactpro.th2.common.grpc.Value.KindCase.LIST_VALUE
 import com.exactpro.th2.common.grpc.Value.KindCase.KIND_NOT_SET
+import com.exactpro.th2.common.grpc.Value.KindCase.MESSAGE_VALUE
+import com.exactpro.th2.common.grpc.Value.KindCase.SIMPLE_VALUE
+import com.exactpro.th2.common.message.addField
 import com.exactpro.th2.common.message.message
 import com.exactpro.th2.common.message.set
 import com.exactpro.th2.common.value.add
 import com.exactpro.th2.common.value.listValue
-import com.exactpro.th2.common.value.toValue
 import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 
 class StreamReaderDelegateDecorator(reader: XMLStreamReader,
                                     private val rawMessage: RawMessage,
-                                    private val xmlSchemaCore: XMLSchemaCore, ) : StreamReaderDelegate(reader) {
+                                    private val xmlSchemaCore: XMLSchemaCore) : StreamReaderDelegate(reader) {
     private val elementStack = ArrayList<QName>()
     private val elementTypeStack = Stack<Value.KindCase>()
 
@@ -49,6 +48,8 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
     private val allElements = mutableMapOf<QName, Value.KindCase>()
     private val xsdElements = mutableMapOf<QName, List<XmlElementWrapper>>()
 
+    private val elements = Stack<NodeContent>()
+
     @Throws(XMLStreamException::class)
     override fun next(): Int {
         val n: Int = super.next()
@@ -68,62 +69,20 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
                     val attributeName = getAttributeName(i).localPart
                     val attributeValue = getAttributeValue(i)
 
-                    if (attributeName == "schemaLocation") {
+                    if (attributeName == SCHEMA_LOCATION) {
                         cacheXsdFromAttribute(attributeValue)
                     }
                 }
 
-                val elementType = if (allElements[qName] != KIND_NOT_SET) {
-                    allElements[qName]
-                } else {
-                    checkNotNull(xsdElements[elementStack[elementStack.lastIndex - 1]]?.find { it.qName == qName }).elementType
+                val nodeContent = NodeContent(qName)
+
+                if (elements.isNotEmpty()) {
+                    val parent = elements.peek()
+                    parent.setMessageType()
+                    parent.childNodes[qName] = mutableListOf(nodeContent)
                 }
 
-                when(elementType) {
-                    SIMPLE_VALUE -> {
-                        elementTypeStack.push(SIMPLE_VALUE)
-                    }
-                    MESSAGE_VALUE -> {
-                        elementTypeStack.push(MESSAGE_VALUE)
-
-                        val builder = message()
-
-                        if (attributeCount > 0) {
-                            writeAttributes(builder)
-                        }
-
-                        messageValueStack.push(builder)
-                    }
-                    LIST_VALUE -> {
-                        elementTypeStack.push(LIST_VALUE)
-
-                        val parentName = checkNotNull(xsdElements[elementStack[elementStack.lastIndex - 1]]?.find { it.qName == qName }).qName
-
-                        val msgBuilderWrapper: MessageBuilderWrapper = if (msgBuilderWrapperMap.contains(parentName)) {
-                            checkNotNull(msgBuilderWrapperMap[parentName])
-                        } else {
-                            MessageBuilderWrapper(qName).also {
-                                msgBuilderWrapperMap[qName] = it
-                            }
-                        }
-
-                        val listBuilder = if (msgBuilderWrapper.contains(qName)) {
-                            checkNotNull(msgBuilderWrapper[qName])
-                        } else {
-                            val list = listValue()
-                            msgBuilderWrapper[qName] = list
-                            list
-                        }
-
-                        if (attributeCount > 0) {
-                            writeAttributes(listBuilder)
-                        }
-
-                        listValueStack.push(listBuilder)
-                    }
-                    null -> { throw IllegalArgumentException("There's no element for $qName") }
-                    else -> { throw IllegalArgumentException("Element $qName is not a simpleValue, messageValue or listValue") }
-                }
+                elements.push(nodeContent)
 
                 // TODO: also use pointer
                 if (!foundMsgType) {
@@ -134,76 +93,35 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
             CHARACTERS -> {
                 if (text.isNotBlank()) {
                     val qName = elementStack[elementStack.lastIndex]
-                    val localElementName = qName.localPart
 
-                    val elementType = if (allElements[qName] != KIND_NOT_SET) {
-                        allElements[qName]
-                    } else {
-                        checkNotNull(xsdElements[elementStack[elementStack.lastIndex - 1]]?.find { it.qName == qName }).elementType
-                    }
-
-                    when(elementType) {
-                       SIMPLE_VALUE -> {
-                           simpleValueStack.add(Value.newBuilder().setSimpleValue(text))
-                       }
-                       MESSAGE_VALUE -> {
-                           val builder = messageValueStack.peek()
-                           builder[localElementName] = text.toValue()
-                       }
-                       else -> { throw IllegalArgumentException("Element is not a simpleValue, messageValue or listValue") }
-                   }
+                    elements.peek().text = text
                }
             }
             END_ELEMENT -> {
-                elementTypeStack.pop()
+//                elementTypeStack.pop()
+
+                val qName = QName(namespaceURI, localName, namespaceContext.getPrefix(namespaceURI))
+
+                val element = elements.pop()
+
+                if (elements.isNotEmpty()) {
+                    val parentElement = elements.peek()
+
+                    checkNotNull(parentElement.childNodes[qName]).add(element)
+                } else {
+//                    println("Element: ${element.childNodes}")
+                    val builder = message()
+                    element.release(builder)
+//                    println("Final message: ${builder.build()}")
+                }
 
                 if (elementTypeStack.isNotEmpty()) {
                     val qName = elementStack.removeLast()
 
                     val parentType = elementTypeStack.peek()
 
-                    val elementType = if (allElements[qName] != KIND_NOT_SET) {
-                        allElements[qName]
-                    } else {
-                        checkNotNull(xsdElements[elementStack[elementStack.lastIndex]]?.find { it.qName == qName }).elementType
-                    }
-
-                    when(elementType) {
-                        SIMPLE_VALUE -> {
-                            if (parentType == MESSAGE_VALUE) {
-                                messageValueStack.peek()[qName.localPart] = simpleValueStack.pop()
-                            } else {
-                                listValueStack.peek().add(simpleValueStack.pop())
-                            }
-                        }
-                        MESSAGE_VALUE -> {
-                            if (parentType == MESSAGE_VALUE) {
-                                val message = messageValueStack.pop()
-                                messageValueStack.peek()[qName.localPart] = message
-
-                                message.addLists(qName)
-                            } else {
-                                val message = messageValueStack.pop()
-                                listValueStack.peek().add(message)
-
-                                message.addLists(qName)
-                            }
-                        }
-                        LIST_VALUE -> {
-                            if (parentType == MESSAGE_VALUE) {
-                                val list = listValueStack.pop()
-                                messageValueStack.peek()[qName.localPart] = list
-                            } else {
-                                val list = listValueStack.pop()
-                                listValueStack.peek().add(list)
-
-                                list.addLists(qName)
-                            }
-                        }
-                        else -> { throw IllegalArgumentException("Element $qName is not a simpleValue, messageValue or listValue") }
-                    }
                 } else {
-                    messageBuilder = messageValueStack.pop()
+//                    messageBuilder = messageValueStack.pop()
                 }
             }
         }
@@ -222,17 +140,18 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
             putAllProperties(metadata.propertiesMap)
         }
 
-        messageBuilder.metadata = metadataBuilder.build()
+//        messageBuilder.metadata = metadataBuilder.build()
+//
+//        if (rawMessage.hasParentEventId()) {
+//            messageBuilder.parentEventId = rawMessage.parentEventId
+//        }
+//
+//        val message = messageBuilder.build()
+//        messageBuilder.clear()
+//        msgBuilderWrapperMap.clear()
 
-        if (rawMessage.hasParentEventId()) {
-            messageBuilder.parentEventId = rawMessage.parentEventId
-        }
-
-        val message = messageBuilder.build()
-        messageBuilder.clear()
-        msgBuilderWrapperMap.clear()
-
-        return message
+//        return
+        return message().build()
     }
 
     fun clearElements() { elementStack.clear() }
@@ -304,6 +223,7 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
     }
 
     companion object {
+        private val SCHEMA_LOCATION = "schemaLocation"
         private val LOGGER = KotlinLogging.logger { }
     }
 
@@ -318,4 +238,5 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
 
         operator fun get(key: QName): ListValue.Builder? = listBuilderMap[key]
     }
+
 }
