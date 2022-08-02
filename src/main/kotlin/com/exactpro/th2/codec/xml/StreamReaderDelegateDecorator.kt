@@ -19,7 +19,6 @@ import com.exactpro.th2.common.message.addField
 import com.exactpro.th2.common.message.message
 import com.exactpro.th2.common.message.set
 import com.exactpro.th2.common.value.add
-import com.exactpro.th2.common.value.listValue
 import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
@@ -28,13 +27,8 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
                                     private val rawMessage: RawMessage,
                                     private val xmlSchemaCore: XMLSchemaCore) : StreamReaderDelegate(reader) {
     private val elementStack = ArrayList<QName>()
-    private val elementTypeStack = Stack<Value.KindCase>()
 
     private val cachedURIXsds = LinkedList<String>()
-
-    private val simpleValueStack = Stack<Value.Builder>()
-    private val messageValueStack = Stack<Message.Builder>()
-    private val listValueStack = Stack<ListValue.Builder>()
 
     // key - qName of the parent
     private val msgBuilderWrapperMap = HashMap<QName, MessageBuilderWrapper>()
@@ -75,11 +69,19 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
                 }
 
                 val nodeContent = NodeContent(qName)
+                nodeContent.addAttributes(this)
 
                 if (elements.isNotEmpty()) {
                     val parent = elements.peek()
                     parent.setMessageType()
-                    parent.childNodes[qName] = mutableListOf(nodeContent)
+
+                    val childNodes = parent.childNodes
+
+                    if (childNodes.contains(qName)) {
+                        checkNotNull(childNodes[qName]).add(nodeContent)
+                    } else {
+                        parent.childNodes[qName] = mutableListOf(nodeContent)
+                    }
                 }
 
                 elements.push(nodeContent)
@@ -92,36 +94,16 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
             }
             CHARACTERS -> {
                 if (text.isNotBlank()) {
-                    val qName = elementStack[elementStack.lastIndex]
-
                     elements.peek().text = text
                }
             }
             END_ELEMENT -> {
-//                elementTypeStack.pop()
-
-                val qName = QName(namespaceURI, localName, namespaceContext.getPrefix(namespaceURI))
-
                 val element = elements.pop()
 
-                if (elements.isNotEmpty()) {
-                    val parentElement = elements.peek()
-
-                    checkNotNull(parentElement.childNodes[qName]).add(element)
-                } else {
-//                    println("Element: ${element.childNodes}")
+                if (elements.isEmpty()) {
                     val builder = message()
                     element.release(builder)
-//                    println("Final message: ${builder.build()}")
-                }
-
-                if (elementTypeStack.isNotEmpty()) {
-                    val qName = elementStack.removeLast()
-
-                    val parentType = elementTypeStack.peek()
-
-                } else {
-//                    messageBuilder = messageValueStack.pop()
+                    println("Final message: ${builder.build()}")
                 }
             }
         }
