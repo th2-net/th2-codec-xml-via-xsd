@@ -1,5 +1,6 @@
 package com.exactpro.th2.codec.xml
 
+import com.exactpro.th2.codec.xml.NodeContent.Companion.writeAttributes
 import com.exactpro.th2.common.grpc.ListValue
 import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.Value
@@ -46,26 +47,34 @@ class NodeContent(val nodeName: QName) {
     private fun Message.Builder.addNode(nodeName: QName, nodeList: MutableList<NodeContent>) {
         val count = nodeList.count()
 
-        val message = message()
+        val list = listValue()
 
         println("Message node $nodeName with children ${nodeList.map { it.nodeName }}")
 
         nodeList.forEach { node ->
-            message.writeAttributes(node) // FIXME: Or messageBuilder
-
             when (node.type) {
                 MESSAGE_VALUE -> {
-
                     if (count > 1) {
-                        val list = listValue()
+                        val subMessage = message()
+                        subMessage.writeAttributes(node) // FIXME: 3 times instead of 1 also in places where i dont need it
 
                         node.childNodes.forEach {
-                            list.addNode(message, it.key, it.value)
-                            list.add(message)
+//                            val subMessage = message()
+//                            subMessage.writeAttributes(node) // FIXME: not every time
+
+                            list.addNode(subMessage, it.key, it.value)
+                            list.add(subMessage)
+
+                            if (it.key.localPart == "Transforms") {
+                                println()
+                            }
                         }
 
                         addField(nodeName.localPart, list)
                     } else if (count == 1) {
+                        val message = message()
+                        message.writeAttributes(node)
+
                         node.childNodes.forEach {
                             message.addNode(it.key, it.value)
                         }
@@ -76,9 +85,10 @@ class NodeContent(val nodeName: QName) {
 
                 // TODO: mb I it's possible to have a list of simple values too
                 SIMPLE_VALUE -> {
-                    if (node.nodeName.localPart == "DigestValue" && node.text == "ErBVwFE5/PWHqRfR9hju8e7AtvuLVg2c9/litjxbdEY=") {
+                    if (node.nodeName.localPart == "Transform") {
                         println()
                     }
+                    writeAttributes(node)
                     node.text?.let { addField(node.nodeName.localPart, it) }
                 }
 
@@ -94,13 +104,10 @@ class NodeContent(val nodeName: QName) {
 
         println("List node $nodeName with children ${nodeList.map { it.nodeName }}")
 
-        if (nodeName.localPart == "DigestMethod") {
-            println()
-        }
+        // FIXME: 9 Transforms instead of 3
 
         nodeList.forEach { node ->
             message.writeAttributes(node)
-            messageBuilder.addField(node.nodeName.localPart, message)
 
             when (node.type) {
                 MESSAGE_VALUE -> {
@@ -109,17 +116,27 @@ class NodeContent(val nodeName: QName) {
                         val list = listValue()
 
                         node.childNodes.forEach {
-//                            list.addNode(it.key, it.value)
                             message.addNode(it.key, it.value)
                             messageBuilder.addField(it.key.localPart, message)
-//                            message.addField(it.key.localPart, message)
                         }
 
                         add(list)
                     } else if (count == 1) {
-                        node.childNodes.forEach {
-                            message.addNode(it.key, it.value)
+                        if (node.nodeName.localPart == "Transforms") {
+                            println()
                         }
+                        node.childNodes.forEach {
+                            val subMessage = message()
+//                            message.addNode(it.key, it.value) //FIXME: here added attr when its not needed
+                            subMessage.addNode(it.key, it.value)
+                            message.addField(it.key.localPart, subMessage)
+                        }
+
+                        if (node.nodeName.localPart == "Transforms") {
+                            println()
+                        }
+
+                        messageBuilder.addField(node.nodeName.localPart, message)
 
                         add(message)
                     }
@@ -127,28 +144,14 @@ class NodeContent(val nodeName: QName) {
 
                 // TODO: mb I it's possible to have a list of simple values too
                 SIMPLE_VALUE -> {
-                    if (node.nodeName.localPart == "DigestMethod") {
-                        println()
-                    }
-                    if (node.nodeName.localPart == "DigestValue" && node.text == "ErBVwFE5/PWHqRfR9hju8e7AtvuLVg2c9/litjxbdEY=") {
-                        println()
-                    }
+                    // TODO: add attr?
                     node.text?.let { messageBuilder.addField(nodeName.localPart, it) }
-//                    node.text?.let { message.addField(nodeName.localPart, it) }
                 }
 
                 else -> throw IllegalArgumentException("Node $node can be either MESSAGE_VALUE or SIMPLE_VALUE")
             }
         }
     }
-
-//    private fun Message.Builder.writeAttributes() {
-//        attributes.forEach {
-//            println("Writing attribute ${it.key}: ${it.value} to $nodeName")
-//
-//            addField(it.key, it.value)
-//        }
-//    }
 
     override fun toString(): String {
         return "NodeContent(nodeName=$nodeName, attributes=$attributes, childNodes=$childNodes, text=$text, type=$type)"
@@ -159,11 +162,11 @@ class NodeContent(val nodeName: QName) {
             nodeContent.attributes.forEach {
                 println("Writing attribute ${it.key}: ${it.value} to ${nodeContent.nodeName}")
 
-                if (it.value == "urn:asx:xsd:xasx.802.001.02 ASX_AU_CHS_comm_802_001_02_xasx_802_001_01.xsd") {
+                if (it.key == "URI") {
                     println()
                 }
 
-                if (!containsFields(it.key)) {
+                if (!containsFields(it.key)) { // FIXME: remove the condition mb
                     addField(it.key, it.value)
                 }
             }
