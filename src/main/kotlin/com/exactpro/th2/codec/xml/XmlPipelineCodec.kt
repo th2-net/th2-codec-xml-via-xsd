@@ -44,7 +44,6 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, priv
     private val pointer = settings.typePointer?.split("/")?.filterNot { it.isBlank() }
     private var xmlCharset: Charset = Charsets.UTF_8
     private val oldValidator = XsdValidator(xsdMap, settings.dirtyValidation)
-    private val xmlSchemaCore = XMLSchemaCore()
 
     override fun encode(messageGroup: MessageGroup): MessageGroup {
         val messages = messageGroup.messagesList
@@ -112,8 +111,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, priv
 
             val reader = StreamReaderDelegateDecorator(
                 XML_INPUT_FACTORY.createXMLStreamReader(IOUtils.toInputStream(xmlString)),
-                rawMessage,
-                xmlSchemaCore,
+                rawMessage
             )
 
             try {
@@ -123,7 +121,6 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, priv
 
                 return reader.getMessage()
             } finally {
-                reader.clearElements()
                 reader.close()
             }
         } catch (e: Exception) {
