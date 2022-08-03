@@ -93,6 +93,8 @@ class NodeContent(private val nodeName: QName) {
         val message = message()
 
         nodeList.forEach { node ->
+//            val message = message()
+
             message.writeAttributes(node)
 
             when (node.type) {
@@ -120,6 +122,9 @@ class NodeContent(private val nodeName: QName) {
 
                 // TODO: mb I it's possible to have a list of simple values too
                 SIMPLE_VALUE -> {
+                    val subMessage = message()
+                    subMessage.writeAttributes(node)
+                    messageBuilder.addField(node.nodeName.localPart, subMessage)
                     node.text?.let { messageBuilder.addField(nodeName.localPart, it) }
                 }
 
@@ -135,6 +140,9 @@ class NodeContent(private val nodeName: QName) {
     companion object {
         private fun Message.Builder.writeAttributes(nodeContent: NodeContent) {
             nodeContent.attributes.forEach {
+                if (it.value == "http://www.w3.org/2001/04/xmlenc#sha256") {
+                    println()
+                }
                     addField(it.key, it.value)
             }
         }
@@ -143,6 +151,9 @@ class NodeContent(private val nodeName: QName) {
             val res = HashMap<String, String>()
 
             nodeContent.attributes.forEach {
+                if (it.value == "http://www.w3.org/2001/04/xmlenc#sha256") {
+                    println()
+                }
                 res[it.key] = it.value
             }
 
