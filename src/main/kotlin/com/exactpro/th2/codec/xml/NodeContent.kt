@@ -47,15 +47,23 @@ class NodeContent(private val nodeName: QName) {
             when (node.type) {
                 MESSAGE_VALUE -> {
                     if (count > 1) {
-                        val subMessage = message()
-                        subMessage.writeAttributes(node)
+
+                        val attributes = getAttributes(node)
+                        var attrsAdded = false
 
                         node.childNodes.forEach {
+                            val subMessage = message()
+
+                            if (!attrsAdded) {
+                                attributes.forEach { (key, value) -> subMessage.addField(key, value) }
+                                attrsAdded = true
+                            }
+
                             list.addNode(subMessage, it.key, it.value)
                             list.add(subMessage)
+                            addField(nodeName.localPart, list)
                         }
 
-                        addField(nodeName.localPart, list)
                     } else if (count == 1) {
                         val message = message()
                         message.writeAttributes(node)
@@ -127,10 +135,18 @@ class NodeContent(private val nodeName: QName) {
     companion object {
         private fun Message.Builder.writeAttributes(nodeContent: NodeContent) {
             nodeContent.attributes.forEach {
-                if (!containsFields(it.key)) { // FIXME: remove the condition mb
                     addField(it.key, it.value)
-                }
             }
+        }
+
+        private fun getAttributes(nodeContent: NodeContent): HashMap<String, String> {
+            val res = HashMap<String, String>()
+
+            nodeContent.attributes.forEach {
+                res[it.key] = it.value
+            }
+
+            return res
         }
     }
 }
