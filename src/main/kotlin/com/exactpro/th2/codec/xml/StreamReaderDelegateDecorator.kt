@@ -21,7 +21,6 @@ import com.exactpro.th2.common.message.set
 import com.exactpro.th2.common.value.add
 import java.util.*
 import kotlin.collections.ArrayList
-import kotlin.collections.HashMap
 
 class StreamReaderDelegateDecorator(reader: XMLStreamReader,
                                     private val rawMessage: RawMessage,
@@ -30,10 +29,7 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
 
     private val cachedURIXsds = LinkedList<String>()
 
-    // key - qName of the parent
-    private val msgBuilderWrapperMap = HashMap<QName, MessageBuilderWrapper>()
-
-    private lateinit var messageBuilder: Message.Builder
+    private var messageBuilder = message()
 
     private var metadataBuilder = MessageMetadata.newBuilder()
 
@@ -101,9 +97,8 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
                 val element = elements.pop()
 
                 if (elements.isEmpty()) {
-                    val builder = message()
-                    element.release(builder)
-                    println("Final message: ${builder.build()}")
+//                    val builder = message()
+                    element.release(messageBuilder)
                 }
             }
         }
@@ -122,55 +117,19 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
             putAllProperties(metadata.propertiesMap)
         }
 
-//        messageBuilder.metadata = metadataBuilder.build()
+        messageBuilder.metadata = metadataBuilder.build()
 //
-//        if (rawMessage.hasParentEventId()) {
-//            messageBuilder.parentEventId = rawMessage.parentEventId
-//        }
-//
-//        val message = messageBuilder.build()
-//        messageBuilder.clear()
-//        msgBuilderWrapperMap.clear()
+        if (rawMessage.hasParentEventId()) {
+            messageBuilder.parentEventId = rawMessage.parentEventId
+        }
 
-//        return
-        return message().build()
+        val message = messageBuilder.build()
+        messageBuilder.clear()
+
+        return message
     }
 
     fun clearElements() { elementStack.clear() }
-
-    private fun writeAttributes(messageBuilder: Message.Builder) {
-        for (i in 0 until attributeCount) {
-            messageBuilder[getAttributeName(i).localPart] = getAttributeValue(i)
-        }
-    }
-
-    private fun writeAttributes(listBuilder: ListValue.Builder) {
-        val builder = message()
-
-        for (i in 0 until attributeCount) {
-            builder.apply {
-                this[getAttributeName(i).localPart] = getAttributeValue(i)
-            }
-        }
-
-        listBuilder.add(builder)
-    }
-
-    private fun Message.Builder.addLists(qName: QName) {
-        if (msgBuilderWrapperMap.contains(qName)) {
-            checkNotNull(msgBuilderWrapperMap[qName]).listBuilderMap.forEach {
-                this[it.key.toString()] = it.value
-            }
-        }
-    }
-
-    private fun ListValue.Builder.addLists(qName: QName) {
-        if (msgBuilderWrapperMap.contains(qName)) {
-            checkNotNull(msgBuilderWrapperMap[qName]).listBuilderMap.forEach {
-                add(it.value)
-            }
-        }
-    }
 
     private fun cacheXsdFromAttribute(attributeValue: String) {
         val xsdFileName = "tmp/" + attributeValue.split(' ')[1]
@@ -208,17 +167,4 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader,
         private val SCHEMA_LOCATION = "schemaLocation"
         private val LOGGER = KotlinLogging.logger { }
     }
-
-    private inner class MessageBuilderWrapper(qName: QName, val listBuilderMap: MutableMap<QName, ListValue.Builder> = mutableMapOf()) {
-        lateinit var messageBuilder: Message.Builder
-
-        operator fun set(key: QName, value: ListValue.Builder) {
-            listBuilderMap[key] = value
-        }
-
-        fun contains(key: QName): Boolean = listBuilderMap.contains(key)
-
-        operator fun get(key: QName): ListValue.Builder? = listBuilderMap[key]
-    }
-
 }

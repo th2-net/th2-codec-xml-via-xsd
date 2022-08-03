@@ -35,7 +35,6 @@ class NodeContent(private val nodeName: QName) {
     }
 
     fun release(messageBuilder: Message.Builder) {
-
         messageBuilder.addNode(nodeName, mutableListOf(this))
     }
 
