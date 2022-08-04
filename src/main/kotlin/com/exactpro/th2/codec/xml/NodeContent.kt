@@ -140,9 +140,6 @@ class NodeContent(private val nodeName: QName) {
     companion object {
         private fun Message.Builder.writeAttributes(nodeContent: NodeContent) {
             nodeContent.attributes.forEach {
-                if (it.value == "http://www.w3.org/2001/04/xmlenc#sha256") {
-                    println()
-                }
                     addField(it.key, it.value)
             }
         }
@@ -151,9 +148,6 @@ class NodeContent(private val nodeName: QName) {
             val res = HashMap<String, String>()
 
             nodeContent.attributes.forEach {
-                if (it.value == "http://www.w3.org/2001/04/xmlenc#sha256") {
-                    println()
-                }
                 res[it.key] = it.value
             }
 
