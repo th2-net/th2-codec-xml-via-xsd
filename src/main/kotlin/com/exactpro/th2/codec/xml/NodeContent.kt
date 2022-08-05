@@ -67,9 +67,9 @@ class NodeContent(val nodeName: QName) {
                                 attrsAdded = true
                             }
 
-                            list.addNode(subMessage, it.key, it.value)
+                            list.addNode(subMessage, it.value)
                             list.add(subMessage)
-                            addField(nodeName.localPart, list)
+                            addField(toNodeName(nodeName), list)
                         }
 
                     } else if (count == 1) {
@@ -80,7 +80,7 @@ class NodeContent(val nodeName: QName) {
                             message.addNode(it.key, it.value)
                         }
 
-                        addField(nodeName.localPart, message)
+                        addField(toNodeName(nodeName), message)
                     }
                 }
 
@@ -90,7 +90,7 @@ class NodeContent(val nodeName: QName) {
                     val text = node.textSB.toString()
 
                     if (text.isNotBlank()) {
-                        addField(node.nodeName.localPart, text)
+                        addField(toNodeName(nodeName), text)
                     }
                 }
 
@@ -99,14 +99,12 @@ class NodeContent(val nodeName: QName) {
         }
     }
 
-    private fun ListValue.Builder.addNode(messageBuilder: Message.Builder, nodeName: QName, nodeList: MutableList<NodeContent>) {
+    private fun ListValue.Builder.addNode(messageBuilder: Message.Builder, nodeList: MutableList<NodeContent>) {
         val count = nodeList.count()
 
         val message = message()
 
         nodeList.forEach { node ->
-//            val message = message()
-
             message.writeAttributes(node)
 
             when (node.type) {
@@ -117,7 +115,7 @@ class NodeContent(val nodeName: QName) {
 
                         node.childNodes.forEach {
                             message.addNode(it.key, it.value)
-                            messageBuilder.addField(it.key.localPart, message)
+                            messageBuilder.addField(toNodeName(it.key), message)
                         }
 
                         add(list)
@@ -125,10 +123,10 @@ class NodeContent(val nodeName: QName) {
                         node.childNodes.forEach {
                             val subMessage = message()
                             subMessage.addNode(it.key, it.value)
-                            message.addField(it.key.localPart, subMessage)
+                            message.addField(toNodeName(it.key), subMessage)
                         }
 
-                        messageBuilder.addField(node.nodeName.localPart, message)
+                        messageBuilder.addField(toNodeName(node.nodeName), message)
                     }
                 }
 
@@ -136,12 +134,12 @@ class NodeContent(val nodeName: QName) {
                 SIMPLE_VALUE -> {
                     val subMessage = message()
                     subMessage.writeAttributes(node)
-                    messageBuilder.addField(node.nodeName.localPart, subMessage)
+                    messageBuilder.addField(toNodeName(node.nodeName), subMessage)
 
                     val text = node.textSB.toString()
 
                     if (text.isNotBlank()) {
-                        messageBuilder.addField(nodeName.localPart, text)
+                        messageBuilder.addField(toNodeName(node.nodeName), text)
                     }
                 }
 
@@ -149,6 +147,8 @@ class NodeContent(val nodeName: QName) {
             }
         }
     }
+    
+    private fun toNodeName(qName: QName) = "${qName.prefix}:${qName.localPart}"
 
     override fun toString(): String {
         return "NodeContent(nodeName=$nodeName, attributes=$attributes, childNodes=$childNodes, text=$textSB, type=$type)"

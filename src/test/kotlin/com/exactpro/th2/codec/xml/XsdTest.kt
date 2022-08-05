@@ -44,6 +44,7 @@ class XsdTest : XmlTest() {
         assertContains(xsdMap, "service.xsd")
     }
 
+    // FIXME: turn it on later
     @Test
     @Disabled("Temporarily disabled")
     fun `xsd not found exception`() {
