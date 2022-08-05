@@ -20,10 +20,18 @@ class NodeContent(val nodeName: QName) {
 
     fun addAttributes(decorator: StreamReaderDelegateDecorator) {
         if (decorator.attributeCount > 0) {
-            for (i in 0 until decorator.attributeCount) {
-                val localPart = decorator.getAttributeName(i).localPart
+            for (i in 0 until decorator.namespaceCount) {
+                val namespace = "xmlns"
+                val prefix = decorator.namespaceContext.getPrefix(decorator.getNamespaceURI(i))
 
-                attributes[localPart] = decorator.getAttributeValue(i)
+                attributes["$namespace${if (prefix.isNotBlank()) ":$prefix" else ""}"] = decorator.getNamespaceURI(i)
+            }
+
+            for (i in 0 until decorator.attributeCount) {
+                val localPart = decorator.getAttributeLocalName(i)
+                val prefix = decorator.getAttributePrefix(i)
+
+                attributes["$prefix:$localPart"] = decorator.getAttributeValue(i)
             }
         }
     }

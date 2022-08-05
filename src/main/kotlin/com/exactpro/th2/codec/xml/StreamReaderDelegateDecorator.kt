@@ -3,7 +3,6 @@ package com.exactpro.th2.codec.xml
 import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.RawMessage
 import mu.KotlinLogging
-import javax.xml.namespace.QName
 import javax.xml.stream.XMLStreamException
 import javax.xml.stream.XMLStreamReader
 import javax.xml.stream.util.StreamReaderDelegate
@@ -23,9 +22,7 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader, private val rawMess
 
         when (n) {
             START_ELEMENT -> {
-                val qName = QName(namespaceURI, localName, namespaceContext.getPrefix(namespaceURI))
-
-                val nodeContent = NodeContent(qName)
+                val nodeContent = NodeContent(name)
                 nodeContent.addAttributes(this)
 
                 if (elements.isNotEmpty()) {
@@ -34,10 +31,10 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader, private val rawMess
 
                     val childNodes = parent.childNodes
 
-                    if (childNodes.contains(qName)) {
-                        checkNotNull(childNodes[qName]).add(nodeContent)
+                    if (childNodes.contains(name)) {
+                        checkNotNull(childNodes[name]).add(nodeContent)
                     } else {
-                        parent.childNodes[qName] = mutableListOf(nodeContent)
+                        parent.childNodes[name] = mutableListOf(nodeContent)
                     }
                 }
 
@@ -92,7 +89,6 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader, private val rawMess
     }
 
     companion object {
-        private val SCHEMA_LOCATION = "schemaLocation"
         private val LOGGER = KotlinLogging.logger { }
     }
 }
