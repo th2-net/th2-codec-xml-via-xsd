@@ -148,7 +148,16 @@ class NodeContent(val nodeName: QName) {
         }
     }
     
-    private fun toNodeName(qName: QName) = "${qName.prefix}:${qName.localPart}"
+    private fun toNodeName(qName: QName): String {
+        val prefix = qName.prefix
+        val localPart = qName.localPart
+
+        return if (prefix.isNotBlank()) {
+            "$prefix:$localPart"
+        } else {
+            localPart
+        }
+    }
 
     override fun toString(): String {
         return "NodeContent(nodeName=$nodeName, attributes=$attributes, childNodes=$childNodes, text=$textSB, type=$type)"
