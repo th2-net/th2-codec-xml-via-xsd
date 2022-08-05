@@ -11,11 +11,11 @@ import com.exactpro.th2.common.value.add
 import com.exactpro.th2.common.value.listValue
 import javax.xml.namespace.QName
 
-class NodeContent(private val nodeName: QName) {
+class NodeContent(val nodeName: QName) {
     private val attributes: MutableMap<String, String> = mutableMapOf()
     val childNodes: MutableMap<QName, MutableList<NodeContent>> = mutableMapOf()
 
-    var text: String? = null
+    var textSB: StringBuilder = StringBuilder()
     var type: Value.KindCase = SIMPLE_VALUE
 
     fun addAttributes(decorator: StreamReaderDelegateDecorator) {
@@ -79,7 +79,11 @@ class NodeContent(private val nodeName: QName) {
                 // TODO: mb I it's possible to have a list of simple values too
                 SIMPLE_VALUE -> {
                     writeAttributes(node)
-                    node.text?.let { addField(node.nodeName.localPart, it) }
+                    val text = node.textSB.toString()
+
+                    if (text.isNotBlank()) {
+                        addField(node.nodeName.localPart, text)
+                    }
                 }
 
                 else -> throw IllegalArgumentException("Node $node can be either MESSAGE_VALUE or SIMPLE_VALUE")
@@ -125,7 +129,12 @@ class NodeContent(private val nodeName: QName) {
                     val subMessage = message()
                     subMessage.writeAttributes(node)
                     messageBuilder.addField(node.nodeName.localPart, subMessage)
-                    node.text?.let { messageBuilder.addField(nodeName.localPart, it) }
+
+                    val text = node.textSB.toString()
+
+                    if (text.isNotBlank()) {
+                        messageBuilder.addField(nodeName.localPart, text)
+                    }
                 }
 
                 else -> throw IllegalArgumentException("Node $node can be either MESSAGE_VALUE or SIMPLE_VALUE")
@@ -134,7 +143,7 @@ class NodeContent(private val nodeName: QName) {
     }
 
     override fun toString(): String {
-        return "NodeContent(nodeName=$nodeName, attributes=$attributes, childNodes=$childNodes, text=$text, type=$type)"
+        return "NodeContent(nodeName=$nodeName, attributes=$attributes, childNodes=$childNodes, text=$textSB, type=$type)"
     }
 
     companion object {

@@ -51,7 +51,7 @@ class StreamReaderDelegateDecorator(reader: XMLStreamReader, private val rawMess
             }
             CHARACTERS -> {
                 if (text.isNotBlank()) {
-                    elements.peek().text = text
+                    elements.peek().textSB.append(text)
                }
             }
             END_ELEMENT -> {
