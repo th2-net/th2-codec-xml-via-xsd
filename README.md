@@ -1,4 +1,4 @@
-# Codec Xml via Xsd
+# Codec Xml via Xsd (0.0.5)
 ![version](https://img.shields.io/badge/version-0.0.4-blue.svg)
 
 # How it works:
@@ -57,13 +57,15 @@ Error from validation process can be disabled for test purposes by `dirtyValidat
 ### Configuration example
 
 * typePointer - Path to message type value for decode (null by default)
+
+## Temporary disabled
 * dirtyValidation - Disable/enable error during validation phase. If disabled all errors will be only visible in log  (false by default)
 * expectsDeclaration - Disable/enable validation of declaration - is it exist or not (true by default)
 
 ```yaml
 typePointer: /root/node/node2/type
-dirtyValidation: false
-expectsDeclaration: false
+#dirtyValidation: false
+#expectsDeclaration: false
 ```
 
 For example:
@@ -77,7 +79,7 @@ spec:
   custom-config:
     codecSettings:
       typePointer: /root/node/node2/type
-      dirtyValidation: false
+#      dirtyValidation: false
 ```
 
 ## Required pins
@@ -141,6 +143,10 @@ spec:
 ```
 
 ## Changelog
+
+### v0.0.5
+
+* Migrate to StAX parser
 
 ### v0.0.4
 

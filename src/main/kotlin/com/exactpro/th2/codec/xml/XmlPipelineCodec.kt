@@ -18,8 +18,6 @@ package com.exactpro.th2.codec.xml
 import com.exactpro.th2.codec.DecodeException
 import com.exactpro.th2.codec.api.IPipelineCodec
 import com.exactpro.th2.codec.xml.utils.toMap
-import com.exactpro.th2.codec.xml.xsd.XMLSchemaCore
-import com.exactpro.th2.codec.xml.xsd.XsdErrorHandler
 import com.exactpro.th2.codec.xml.xsd.XsdValidator
 import com.exactpro.th2.common.grpc.AnyMessage
 import com.exactpro.th2.common.grpc.Message
@@ -30,20 +28,19 @@ import com.exactpro.th2.common.message.messageType
 import com.exactpro.th2.common.message.toJson
 import com.github.underscore.lodash.Xml
 import com.google.protobuf.ByteString
-import org.apache.tika.io.IOUtils
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.nio.charset.Charset
 import java.nio.file.Path
-import javax.xml.XMLConstants
-import javax.xml.stream.XMLInputFactory
-import javax.xml.validation.SchemaFactory
 
-open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, private val xsdMap: Map<String, Path>)  : IPipelineCodec {
+open class XmlPipelineCodec(settings: XmlPipelineCodecSettings, xsdMap: Map<String, Path> = mapOf())  : IPipelineCodec {
 
-    private val pointer = settings.typePointer?.split("/")?.filterNot { it.isBlank() }
+    private val pointer = settings.typePointer
+        ?.split("/")?.filter(String::isNotBlank)
+        ?: listOf()
     private var xmlCharset: Charset = Charsets.UTF_8
-    private val oldValidator = XsdValidator(xsdMap, settings.dirtyValidation)
+//    private val oldValidator = XsdValidator(xsdMap, settings.dirtyValidation)
+    private val oldValidator = XsdValidator(xsdMap, false)
 
     override fun encode(messageGroup: MessageGroup): MessageGroup {
         val messages = messageGroup.messagesList
@@ -107,18 +104,10 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, priv
 
     private fun decodeOne(rawMessage: RawMessage): Message {
         try {
-            val xmlString = rawMessage.body.toStringUtf8()
-
-            val reader = StreamReaderDelegateDecorator(
-                XML_INPUT_FACTORY.createXMLStreamReader(IOUtils.toInputStream(xmlString)),
-                rawMessage
-            )
+            val reader = XmlCodecStreamReader(rawMessage, pointer)
 
             try {
-                while (reader.hasNext()) {
-                    reader.next()
-                }
-
+                while (reader.hasNext()) { reader.next() }
                 return reader.getMessage()
             } finally {
                 reader.close()
@@ -128,37 +117,12 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, priv
         }
     }
 
-    private inline fun <reified T>Map<*,*>.getNode(pointer: List<String>): T {
-        var current: Any = this
-
-        for (name in pointer) {
-            current = (current as? Map<*, *>)?.get(name) ?: error("Can not find element by name '$name' in path: $pointer")
-        }
-        return current as T
-    }
-
     companion object {
         private val LOGGER: Logger = LoggerFactory.getLogger(XmlPipelineCodec::class.java)
 
-        private val XML_INPUT_FACTORY = XMLInputFactory.newInstance()
+//        private val SCHEMA_FACTORY = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI).apply {
+//            errorHandler = XsdErrorHandler()
+//        }
 
-        private val SCHEMA_FACTORY = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI).apply {
-            errorHandler = XsdErrorHandler()
-        }
-
-        private const val NO = "no"
-
-        /**
-         * The constant from [Xml.OMITXMLDECLARATION]
-         */
-        private const val OMIT_XML_DECLARATION = "#omit-xml-declaration"
-        /**
-         * The constant from [Xml.ENCODING]
-         */
-        private const val ENCODING = "#encoding"
-        /**
-         * The constant from [Xml.STANDALONE]
-         */
-        private const val STANDALONE = "#standalone"
     }
 }

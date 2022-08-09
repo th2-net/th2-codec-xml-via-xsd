@@ -20,12 +20,10 @@ import com.exactpro.th2.codec.xml.utils.parsedMessage
 import com.exactpro.th2.common.message.addField
 import com.exactpro.th2.common.message.addFields
 import com.exactpro.th2.common.message.message
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 
 class XmlAttributeTest : XmlTest() {
     @Test
-    @Disabled("Disabled for the new version of codec-xml-via-xsd")
     fun `test attributes fields`() {
         val xml = """<TestAttrMessage>
                 <b>
@@ -99,7 +97,6 @@ class XmlAttributeTest : XmlTest() {
     }
 
     @Test
-    @Disabled("Disabled for the new version of codec-xml-via-xsd")
     fun `test decode attrs in different places`() {
         val xml = """
             <Attributes defaultMsgAttrA="123" msgAttrA="45" msgAttrB="67">
@@ -134,7 +131,6 @@ class XmlAttributeTest : XmlTest() {
     }
 
     @Test
-    @Disabled("Disabled for the new version of codec-xml-via-xsd")
     fun `test encode attrs in different place`() {
         val xml = """
         <Attributes defaultMsgAttrA="123" msgAttrA="45" msgAttrB="67">

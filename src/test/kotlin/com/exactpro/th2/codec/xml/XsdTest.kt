@@ -44,9 +44,8 @@ class XsdTest : XmlTest() {
         assertContains(xsdMap, "service.xsd")
     }
 
-    // FIXME: turn it on later
     @Test
-    @Disabled("Temporarily disabled")
+    @Disabled("validation temporay disabled")
     fun `xsd not found exception`() {
         val xml = """
             <Attributes schemaLocation="test.123.123.01 test.xsd" defaultMsgAttrA="123" msgAttrA="45" msgAttrB="67">

@@ -1,183 +1,132 @@
+/*
+ * Copyright 2022 Exactpro (Exactpro Systems Limited)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.exactpro.th2.codec.xml
 
-import com.exactpro.th2.common.grpc.ListValue
 import com.exactpro.th2.common.grpc.Message
+import com.exactpro.th2.common.grpc.MessageMetadata
 import com.exactpro.th2.common.grpc.Value
-import com.exactpro.th2.common.grpc.Value.KindCase.SIMPLE_VALUE
-import com.exactpro.th2.common.grpc.Value.KindCase.MESSAGE_VALUE
 import com.exactpro.th2.common.message.addField
-import com.exactpro.th2.common.message.message
-import com.exactpro.th2.common.value.add
-import com.exactpro.th2.common.value.listValue
+import com.exactpro.th2.common.value.toValue
 import javax.xml.namespace.QName
 
-class NodeContent(val nodeName: QName) {
-    private val attributes: MutableMap<String, String> = mutableMapOf()
-    val childNodes: MutableMap<QName, MutableList<NodeContent>> = mutableMapOf()
-
-    var textSB: StringBuilder = StringBuilder()
-    var type: Value.KindCase = SIMPLE_VALUE
-
-    fun addAttributes(decorator: StreamReaderDelegateDecorator) {
-        if (decorator.attributeCount > 0) {
-            for (i in 0 until decorator.namespaceCount) {
-                val namespace = "xmlns"
-                val prefix = decorator.namespaceContext.getPrefix(decorator.getNamespaceURI(i))
-
-                attributes["$namespace${if (prefix.isNotBlank()) ":$prefix" else ""}"] = decorator.getNamespaceURI(i)
-            }
-
-            for (i in 0 until decorator.attributeCount) {
-                val localPart = decorator.getAttributeLocalName(i)
-                val prefix = decorator.getAttributePrefix(i)
-
-                attributes["$prefix:$localPart"] = decorator.getAttributeValue(i)
-            }
-        }
+class NodeContent(
+    private val nodeName: QName,
+    decorator: XmlCodecStreamReader
+) {
+    private val messageBuilder = Message.newBuilder().apply {
+        metadata = MessageMetadata.getDefaultInstance() //FIXME: remove
     }
+    private val textSB = StringBuilder()
 
-    fun setMessageType() {
-        if (this.type == SIMPLE_VALUE) {
-            this.type = MESSAGE_VALUE
-        }
-    }
+    private val childNodes: MutableMap<QName, MutableList<NodeContent>> = mutableMapOf()
+    private var isMessage: Boolean = false
+    private val isEmpty: Boolean
+        get() = !isMessage && textSB.isEmpty()
 
-    fun release(messageBuilder: Message.Builder) {
-        messageBuilder.addNode(nodeName, mutableListOf(this))
-    }
+    val name: String = nodeName.toNodeName()
 
-    private fun Message.Builder.addNode(nodeName: QName, nodeList: MutableList<NodeContent>) {
-        val count = nodeList.count()
+    init {
+        decorator.namespaceCount.let { size ->
+            if (size > 0) {
+                for (i in 0 until size) {
+                    decorator.getNamespaceURI(i).also { value ->
+                        val prefix = decorator.namespaceContext.getPrefix(value)
 
-        val list = listValue()
-
-        nodeList.forEach { node ->
-            when (node.type) {
-                MESSAGE_VALUE -> {
-                    if (count > 1) {
-
-                        val attributes = getAttributes(node)
-                        var attrsAdded = false
-
-                        node.childNodes.forEach {
-                            val subMessage = message()
-
-                            if (!attrsAdded) {
-                                attributes.forEach { (key, value) -> subMessage.addField(key, value) }
-                                attrsAdded = true
-                            }
-
-                            list.addNode(subMessage, it.value)
-                            list.add(subMessage)
-                            addField(toNodeName(nodeName), list)
-                        }
-
-                    } else if (count == 1) {
-                        val message = message()
-                        message.writeAttributes(node)
-
-                        node.childNodes.forEach {
-                            message.addNode(it.key, it.value)
-                        }
-
-                        addField(toNodeName(nodeName), message)
+                        messageBuilder.addField(makeFieldName(NAMESPACE, prefix, true), value)
                     }
                 }
+                isMessage = true
+            }
+        }
+        decorator.attributeCount.let { size ->
+            if (size > 0) {
+                for (i in 0 until size) {
+                    val localPart = decorator.getAttributeLocalName(i)
+                    val prefix = decorator.getAttributePrefix(i)
 
-                // TODO: mb I it's possible to have a list of simple values too
-                SIMPLE_VALUE -> {
-                    writeAttributes(node)
-                    val text = node.textSB.toString()
-
-                    if (text.isNotBlank()) {
-                        addField(toNodeName(nodeName), text)
-                    }
+                    messageBuilder.addField(makeFieldName(prefix, localPart, true), decorator.getAttributeValue(i))
                 }
-
-                else -> throw IllegalArgumentException("Node $node can be either MESSAGE_VALUE or SIMPLE_VALUE")
+                isMessage = true
             }
         }
     }
 
-    private fun ListValue.Builder.addNode(messageBuilder: Message.Builder, nodeList: MutableList<NodeContent>) {
-        val count = nodeList.count()
+    fun putChild(name: QName, node: NodeContent) {
+        childNodes.compute(name) { _, value ->
+            value
+                ?.apply { add(node) }
+                ?: mutableListOf(node)
+        }
+        isMessage = true
+    }
 
-        val message = message()
+    fun appendText(text: String) {
+        if (text.isNotBlank()) {
+            textSB.append(text)
+        }
+    }
 
-        nodeList.forEach { node ->
-            message.writeAttributes(node)
+    fun release() {
+        if (isMessage) {
+            childNodes.forEach { (name, values) ->
+                val notEmptyValues = values.asSequence().filterNot(NodeContent::isEmpty)
 
-            when (node.type) {
-                MESSAGE_VALUE -> {
-
-                    if (count > 1) {
-                        val list = listValue()
-
-                        node.childNodes.forEach {
-                            message.addNode(it.key, it.value)
-                            messageBuilder.addField(toNodeName(it.key), message)
-                        }
-
-                        add(list)
-                    } else if (count == 1) {
-                        node.childNodes.forEach {
-                            val subMessage = message()
-                            subMessage.addNode(it.key, it.value)
-                            message.addField(toNodeName(it.key), subMessage)
-                        }
-
-                        messageBuilder.addField(toNodeName(node.nodeName), message)
-                    }
+                when (values.size) { // Clarefy type of element: list or single
+                    0 -> error("Sub element $name hasn't got values")
+                    1 -> messageBuilder.addField(notEmptyValues.first().name, notEmptyValues.first().toValue())
+                    else -> messageBuilder.addField(notEmptyValues.first().name, notEmptyValues.map(NodeContent::toValue).toListValue())
                 }
-
-                // TODO: mb I it's possible to have a list of simple values too
-                SIMPLE_VALUE -> {
-                    val subMessage = message()
-                    subMessage.writeAttributes(node)
-                    messageBuilder.addField(toNodeName(node.nodeName), subMessage)
-
-                    val text = node.textSB.toString()
-
-                    if (text.isNotBlank()) {
-                        messageBuilder.addField(toNodeName(node.nodeName), text)
-                    }
-                }
-
-                else -> throw IllegalArgumentException("Node $node can be either MESSAGE_VALUE or SIMPLE_VALUE")
+            }
+            if(textSB.isNotBlank()) {
+                messageBuilder.addField(TEXT_FIELD_NAME, textSB.toValue())
             }
         }
     }
-    
-    private fun toNodeName(qName: QName): String {
-        val prefix = qName.prefix
-        val localPart = qName.localPart
 
-        return if (prefix.isNotBlank()) {
-            "$prefix:$localPart"
-        } else {
-            localPart
+    fun toMessage(): Message {
+        check(isMessage) {
+            "The $nodeName node isn't message"
         }
+        return messageBuilder.build()
     }
 
     override fun toString(): String {
-        return "NodeContent(nodeName=$nodeName, attributes=$attributes, childNodes=$childNodes, text=$textSB, type=$type)"
+        return "NodeContent(nodeName=$nodeName, childNodes=$childNodes, text=$textSB)"
+    }
+
+    private fun Sequence<Value>.toListValue(): Value = Value.newBuilder().apply {
+        listValueBuilder.apply {
+            forEach(::addValues)
+        }
+    }.build()
+
+    private fun toValue(): Value = if (isMessage) {
+        messageBuilder.toValue()
+    } else {
+        textSB.toValue()
     }
 
     companion object {
-        private fun Message.Builder.writeAttributes(nodeContent: NodeContent) {
-            nodeContent.attributes.forEach {
-                    addField(it.key, it.value)
-            }
-        }
+        private const val NAMESPACE = "xmlns"
+        private const val TEXT_FIELD_NAME = "#text"
 
-        private fun getAttributes(nodeContent: NodeContent): HashMap<String, String> {
-            val res = HashMap<String, String>()
+        private fun QName.toNodeName(): String = makeFieldName(prefix, localPart)
 
-            nodeContent.attributes.forEach {
-                res[it.key] = it.value
-            }
-
-            return res
+        private fun makeFieldName(first: String, second: String, isAttribute: Boolean = false): String {
+            return "${if (isAttribute) "-" else ""}$first${if (first.isNotBlank() && second.isNotBlank()) ":" else ""}$second"
         }
     }
 }

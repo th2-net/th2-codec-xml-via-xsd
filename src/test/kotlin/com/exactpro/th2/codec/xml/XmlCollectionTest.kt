@@ -20,10 +20,8 @@ import com.exactpro.th2.codec.xml.utils.parsedMessage
 import com.exactpro.th2.common.message.addField
 import com.exactpro.th2.common.message.addFields
 import com.exactpro.th2.common.message.message
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 
-@Disabled("Disabled for the new version of codec-xml-via-xsd")
 class XmlCollectionTest : XmlTest() {
 
     @Test

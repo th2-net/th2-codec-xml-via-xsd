@@ -17,7 +17,6 @@ package com.exactpro.th2.codec.xml.utils
 
 import com.exactpro.th2.codec.api.IPipelineCodec
 import com.exactpro.th2.codec.xml.XmlPipelineCodec
-import com.exactpro.th2.codec.xml.XmlPipelineCodecFactory.Companion.decodeInputToDictionary
 import com.exactpro.th2.codec.xml.XmlPipelineCodecSettings
 import com.exactpro.th2.common.grpc.AnyMessage
 import com.exactpro.th2.common.grpc.Message
@@ -26,13 +25,11 @@ import com.google.protobuf.TextFormat
 import mu.KotlinLogging
 import org.apache.commons.io.FileUtils
 import org.slf4j.Logger
-import java.io.ByteArrayInputStream
 import java.io.File
-import java.nio.file.Path
-import java.util.Base64
+import java.util.*
 import kotlin.test.assertEquals
 
-abstract class XmlTest(jsonPathToType: String? = null, nameOfXsdResource: String? = null) {
+abstract class XmlTest(pathToType: String? = null) {
 
     protected val codec: IPipelineCodec
 
@@ -58,12 +55,7 @@ abstract class XmlTest(jsonPathToType: String? = null, nameOfXsdResource: String
     }
 
     init {
-        val xsdMap = nameOfXsdResource?.run {
-            val zipBase64 = Thread.currentThread().contextClassLoader.getResource(nameOfXsdResource)!!
-            decodeInputToDictionary(ByteArrayInputStream(encodeFileToBase64Binary(zipBase64.file)), Path.of("tmp").toString())
-        } ?: mapOf()
-
-        codec = XmlPipelineCodec(XmlPipelineCodecSettings(jsonPathToType), xsdMap)
+        codec = XmlPipelineCodec(XmlPipelineCodecSettings(pathToType))
     }
 
     protected fun encodeFileToBase64Binary(fileName: String): ByteArray {
