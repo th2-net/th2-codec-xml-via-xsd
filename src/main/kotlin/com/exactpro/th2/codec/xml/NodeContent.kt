@@ -82,12 +82,24 @@ class NodeContent(
     fun release() {
         if (isMessage) {
             childNodes.forEach { (name, values) ->
-                val notEmptyValues = values.asSequence().filterNot(NodeContent::isEmpty)
+                try {
+                    val notEmptyValues = values.filterNot(NodeContent::isEmpty)
 
-                when (values.size) { // Clarefy type of element: list or single
-                    0 -> error("Sub element $name hasn't got values")
-                    1 -> messageBuilder.addField(notEmptyValues.first().name, notEmptyValues.first().toValue())
-                    else -> messageBuilder.addField(notEmptyValues.first().name, notEmptyValues.map(NodeContent::toValue).toListValue())
+                    if (notEmptyValues.isNotEmpty()) {
+                        val first = notEmptyValues.first()
+                        when (values.size) { // Clarefy type of element: list or single
+                            0 -> error("Sub element $name hasn't got values")
+                            1 -> messageBuilder.addField(first.name, first.toValue())
+                            else -> messageBuilder.addField(
+                                first.name,
+                                notEmptyValues.asSequence()
+                                    .map(NodeContent::toValue)
+                                    .toListValue()
+                            )
+                        }
+                    }
+                } catch (e: RuntimeException) {
+                    throw IllegalStateException("The `$name` field can't be released in the `$nodeName` node", e)
                 }
             }
             if(textSB.isNotBlank()) {
