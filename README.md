@@ -147,6 +147,8 @@ spec:
 ### v0.0.5
 
 * Migrate to StAX parser
+* Migrated from common:3.31.5 to common:3.40.0
+* Migrated from bom:3.1.0 to common:3.2.0
 
 ### v0.0.4
 
