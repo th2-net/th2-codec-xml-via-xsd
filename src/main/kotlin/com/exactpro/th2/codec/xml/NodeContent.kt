@@ -43,9 +43,10 @@ class NodeContent(
             if (size > 0) {
                 for (i in 0 until size) {
                     decorator.getNamespaceURI(i).also { value ->
-                        val prefix = decorator.namespaceContext.getPrefix(value)
+                        val uri = value ?: ""
+                        val prefix = decorator.namespaceContext.getPrefix(uri) ?: ""
 
-                        messageBuilder.addField(makeFieldName(NAMESPACE, prefix, true), value)
+                        messageBuilder.addField(makeFieldName(NAMESPACE, prefix, true), uri)
                     }
                 }
                 isMessage = true
