@@ -18,6 +18,12 @@ plugins {
     id 'org.jetbrains.kotlin.jvm' version "${kotlin_version}"
     id 'com.github.harbby.gradle.serviceloader' version '1.1.5'
     id 'application'
+    id "org.owasp.dependencycheck" version "7.2.0"
+}
+
+dependencyCheck {
+    format='HTML'
+    failBuildOnCVSS=5
 }
 
 ext {
@@ -66,12 +72,9 @@ jar {
 }
 
 dependencies {
-    api platform('com.exactpro.th2:bom:3.2.0')
-    implementation 'com.exactpro.th2:common:3.40.0'
-    implementation 'com.exactpro.th2:codec:4.7.2'
-
-    implementation 'org.slf4j:slf4j-log4j12'
-    implementation 'org.slf4j:slf4j-api'
+    api platform('com.exactpro.th2:bom:4.0.2')
+    implementation 'com.exactpro.th2:common:3.41.1'
+    implementation 'com.exactpro.th2:codec:4.7.4'
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlin_version}"
     implementation "org.jetbrains.kotlin:kotlin-reflect:${kotlin_version}"
