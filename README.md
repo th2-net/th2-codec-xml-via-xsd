@@ -1,4 +1,4 @@
-# Codec Xml via Xsd (0.0.5)
+# Codec Xml via Xsd (0.0.6)
 ![version](https://img.shields.io/badge/version-0.0.4-blue.svg)
 
 # How it works:
@@ -143,6 +143,13 @@ spec:
 ```
 
 ## Changelog
+
+### v0.0.6
+
+* Migrated from common:3.40.0 to common:3.47.1
+* Migrated from bom:3.2.0 to bom:4.0.2
+* Migrated from codec:4.7.2 to codec:4.7.4
+* Updated kotlin version from 1.5.32 to 1.6.21
 
 ### v0.0.5
 
