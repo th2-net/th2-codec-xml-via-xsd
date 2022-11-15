@@ -29,7 +29,6 @@ import com.google.protobuf.ByteString
 import java.nio.charset.Charset
 import mu.KotlinLogging
 
-
 open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, private val validator: XsdValidator)  : IPipelineCodec {
 
     private val pointer = settings.typePointer?.split("/")?.filterNot { it.isBlank() }
