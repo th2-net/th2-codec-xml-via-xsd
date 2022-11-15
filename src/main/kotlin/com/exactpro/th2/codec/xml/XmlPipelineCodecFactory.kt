@@ -53,9 +53,7 @@ class XmlPipelineCodecFactory : IPipelineCodecFactory {
             return super.init(pipelineCodecContext)
         }
 
-        xsdMap = aliases.map { pipelineCodecContext.getFile(it) }.associate { dictionary ->
-            dictionary.name to SCHEMA_FACTORY.newSchema(StreamSource(dictionary) as Source)!!
-        }
+        xsdMap = aliases.associateWith { SCHEMA_FACTORY.newSchema(StreamSource(pipelineCodecContext[it]) as Source)!! }
 
         LOGGER.info { "Processed alias dictionaries: ${xsdMap.keys.joinToString(", " )}" }
     }
