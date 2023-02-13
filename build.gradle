@@ -16,13 +16,13 @@
 plugins {
     id 'com.palantir.docker' version '0.25.0'
     id 'org.jetbrains.kotlin.jvm' version "${kotlin_version}"
-    id 'com.github.harbby.gradle.serviceloader' version '1.1.5'
+    id 'org.jetbrains.kotlin.kapt' version "${kotlin_version}"
     id 'application'
 }
 
 ext {
     sharedDir = file("${project.rootDir}/shared")
-    sailfishVersion = '3.2.1752'
+    sailfishVersion = '3.3.54'
 }
 
 group = 'com.exactpro.th2'
@@ -35,16 +35,58 @@ ext {
     junitVersion        = '5.8.1'
 }
 
+ext.excludeSailfish = { rcd ->
+    rcd.excludeModule("com.exactpro.sf", "sailfish-core")
+    rcd.excludeModule("com.exactpro.sf", "sailfish-common")
+    rcd.excludeModule("com.exactpro.sf", "sailfish-rest-api-client")
+    rcd.excludeModule("com.exactpro.sf", "service-http")
+}
+
 repositories {
-    mavenCentral()
+    maven {
+        name 'MavenLocal'
+        url sharedDir
+    }
+
     maven {
         name 'Sonatype_snapshots'
         url 'https://s01.oss.sonatype.org/content/repositories/snapshots/'
+        content {
+            excludeSailfish(it)
+        }
+    }
+
+    // ignoreGradleMetadataRedirection is used for sonatype because
+    // Sailfish dependencies have constrains that interfere with our BOM
+    // so we exclude Gradle metadata for this repositories.
+    // We've checked these versions - they are compatible and safe to use
+    maven {
+        name 'Sonatype_snapshots'
+        url 'https://s01.oss.sonatype.org/content/repositories/snapshots/'
+        metadataSources {
+            mavenPom()
+            artifact()
+            ignoreGradleMetadataRedirection()
+        }
     }
     maven {
         name 'Sonatype_releases'
         url 'https://s01.oss.sonatype.org/content/repositories/releases/'
+        content {
+            excludeSailfish(it)
+        }
     }
+    maven {
+        name 'Sonatype_releases'
+        url 'https://s01.oss.sonatype.org/content/repositories/releases/'
+        metadataSources {
+            mavenPom()
+            artifact()
+            ignoreGradleMetadataRedirection()
+        }
+    }
+    mavenCentral()
+    mavenLocal()
 
     configurations.all {
         resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
@@ -67,14 +109,13 @@ jar {
 }
 
 dependencies {
-    api platform('com.exactpro.th2:bom:3.1.0')
-    implementation 'com.exactpro.th2:common:3.31.5'
-    implementation 'com.exactpro.th2:codec:4.7.2'
-    implementation 'com.exactpro.th2:sailfish-utils:3.12.3'
+    api platform('com.exactpro.th2:bom:4.1.0')
+    implementation 'com.exactpro.th2:common:3.44.0'
+    implementation 'com.exactpro.th2:codec:4.7.5'
+    implementation 'com.exactpro.th2:sailfish-utils:3.14.0'
 
     implementation "com.exactpro.sf:sailfish-core:${sailfishVersion}"
 
-    implementation 'org.slf4j:slf4j-log4j12'
     implementation 'org.slf4j:slf4j-api'
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlin_version}"
@@ -87,6 +128,10 @@ dependencies {
     testImplementation "org.junit.jupiter:junit-jupiter-api:${junitVersion}"
     testImplementation "org.junit.jupiter:junit-jupiter-params:${junitVersion}"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitVersion}"
+
+    compileOnly 'com.google.auto.service:auto-service:1.0.1'
+    annotationProcessor 'com.google.auto.service:auto-service:1.0.1'
+    kapt 'com.google.auto.service:auto-service:1.0.1'
 }
 
 application {
@@ -121,10 +166,6 @@ compileTestKotlin {
 
 clean {
     delete sharedDir
-}
-
-serviceLoader {
-    serviceInterface 'com.exactpro.th2.codec.api.IPipelineCodecFactory'
 }
 
 test {

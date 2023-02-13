@@ -22,9 +22,11 @@ import com.exactpro.th2.codec.xml.utils.ZipBase64Codec
 import mu.KotlinLogging
 import org.apache.commons.io.FileUtils
 import java.io.InputStream
+import com.google.auto.service.AutoService
 import java.nio.file.Files
 import java.nio.file.Path
 
+@AutoService(IPipelineCodecFactory::class)
 class XmlPipelineCodecFactory : IPipelineCodecFactory {
     override val settingsClass: Class<out IPipelineCodecSettings> = XmlPipelineCodecSettings::class.java
     override val protocol: String = PROTOCOL
