@@ -144,6 +144,14 @@ spec:
 
 ### v0.0.4
 
+#### Changed:
+* th2-common `3.44.0`
+* th2-bom `4.1.0`
+* kotlin `1.6.21`
+* Dependency check pipeline step
+
+### v0.0.4
+
 #### Feature:
 
 * Self-closing tags are ignored by the codec
