@@ -61,7 +61,6 @@ fun MutableMap<String, *>.toProto(type: String, rawMessage: RawMessage): Message
 
     builder.metadataBuilder.apply {
         id = rawMetadata.id
-        timestamp = rawMetadata.timestamp
         protocol = XmlPipelineCodecFactory.PROTOCOL
         putAllProperties(rawMetadata.propertiesMap)
     }

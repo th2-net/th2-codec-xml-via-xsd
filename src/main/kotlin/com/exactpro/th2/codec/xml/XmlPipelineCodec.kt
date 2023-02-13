@@ -73,7 +73,6 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
             metadataBuilder.putAllProperties(message.metadata.propertiesMap)
             metadataBuilder.protocol = XmlPipelineCodecFactory.PROTOCOL
             metadataBuilder.id = message.metadata.id
-            metadataBuilder.timestamp = message.metadata.timestamp
             body = ByteString.copyFrom(xmlString, xmlCharset)
         }.build()
     }
