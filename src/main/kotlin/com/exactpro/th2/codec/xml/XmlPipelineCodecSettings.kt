@@ -19,6 +19,7 @@ import com.exactpro.th2.codec.api.IPipelineCodecSettings
 
 class XmlPipelineCodecSettings(
     val typePointer: String? = null,
+    val encodeValidation: Boolean = false
 //    val dirtyValidation: Boolean = false,
 //    val expectsDeclaration: Boolean = true,
 ) : IPipelineCodecSettings

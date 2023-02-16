@@ -40,6 +40,7 @@ open class XmlPipelineCodec(settings: XmlPipelineCodecSettings, xsdMap: Map<Stri
         ?: listOf()
     private var xmlCharset: Charset = Charsets.UTF_8
 //    private val oldValidator = XsdValidator(xsdMap, settings.dirtyValidation)
+    private val encodeValidation = settings.encodeValidation
     private val oldValidator = XsdValidator(xsdMap, false)
 
     override fun encode(messageGroup: MessageGroup): MessageGroup {
@@ -67,8 +68,10 @@ open class XmlPipelineCodec(settings: XmlPipelineCodecSettings, xsdMap: Map<Stri
         val map = message.toMap()
         val xmlString = Xml.toXml(map)
 
-        oldValidator.validate(xmlString.toByteArray())
-        LOGGER.debug("Validation of incoming parsed message complete: ${message.messageType}")
+        if (encodeValidation) {
+            oldValidator.validate(xmlString.toByteArray())
+            LOGGER.debug("Validation of incoming parsed message complete: ${message.messageType}")
+        }
 
         return RawMessage.newBuilder().apply {
             if (message.hasParentEventId()) parentEventId = message.parentEventId

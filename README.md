@@ -57,6 +57,9 @@ Error from validation process can be disabled for test purposes by `dirtyValidat
 ### Configuration example
 
 * typePointer - Path to message type value for decode (null by default)
+* encodeValidation - This flag determines if messages are validated
+during encoding (false by default). Note: this validation will significantly 
+slow down the performance and requires an archive of XSDs
 
 ## Temporary disabled
 * dirtyValidation - Disable/enable error during validation phase. If disabled all errors will be only visible in log  (false by default)
