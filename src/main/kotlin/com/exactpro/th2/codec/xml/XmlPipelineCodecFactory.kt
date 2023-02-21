@@ -31,10 +31,11 @@ class XmlPipelineCodecFactory : IPipelineCodecFactory {
     lateinit var xsdMap: Map<String, Path>
 
     override fun init(dictionary: InputStream) {
-        xsdMap = decodeInputToDictionary(dictionary, XSD_FOLDER)
-        if (xsdMap.isEmpty()) {
-            throw IllegalArgumentException("No xsd were found from input dictionary!")
-        }
+        xsdMap = emptyMap()
+//        xsdMap = decodeInputToDictionary(dictionary, XSD_FOLDER)
+//        if (xsdMap.isEmpty()) {
+//            throw IllegalArgumentException("No xsd were found from input dictionary!")
+//        }
     }
 
     override fun create(settings: IPipelineCodecSettings?): IPipelineCodec {

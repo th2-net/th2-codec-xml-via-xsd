@@ -18,7 +18,6 @@ package com.exactpro.th2.codec.xml
 import com.exactpro.th2.codec.DecodeException
 import com.exactpro.th2.codec.api.IPipelineCodec
 import com.exactpro.th2.codec.xml.utils.toMap
-import com.exactpro.th2.codec.xml.utils.toProto
 import com.exactpro.th2.codec.xml.xsd.XsdValidator
 import com.exactpro.th2.common.grpc.AnyMessage
 import com.exactpro.th2.common.grpc.Message
@@ -34,11 +33,15 @@ import org.slf4j.LoggerFactory
 import java.nio.charset.Charset
 import java.nio.file.Path
 
-open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdMap: Map<String, Path>)  : IPipelineCodec {
+open class XmlPipelineCodec(settings: XmlPipelineCodecSettings, xsdMap: Map<String, Path> = mapOf())  : IPipelineCodec {
 
-    private val pointer = settings.typePointer?.split("/")?.filterNot { it.isBlank() }
+    private val pointer = settings.typePointer
+        ?.split("/")?.filter(String::isNotBlank)
+        ?: listOf()
     private var xmlCharset: Charset = Charsets.UTF_8
-    private val validator = XsdValidator(xsdMap, settings.dirtyValidation)
+//    private val oldValidator = XsdValidator(xsdMap, settings.dirtyValidation)
+    private val encodeValidation = settings.encodeValidation
+    private val oldValidator = XsdValidator(xsdMap, false)
 
     override fun encode(messageGroup: MessageGroup): MessageGroup {
         val messages = messageGroup.messagesList
@@ -65,8 +68,10 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
         val map = message.toMap()
         val xmlString = Xml.toXml(map)
 
-        validator.validate(xmlString.toByteArray())
-        LOGGER.debug("Validation of incoming parsed message complete: ${message.messageType}")
+        if (encodeValidation) {
+            oldValidator.validate(xmlString.toByteArray())
+            LOGGER.debug("Validation of incoming parsed message complete: ${message.messageType}")
+        }
 
         return RawMessage.newBuilder().apply {
             if (message.hasParentEventId()) parentEventId = message.parentEventId
@@ -102,60 +107,25 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
 
     private fun decodeOne(rawMessage: RawMessage): Message {
         try {
-            validator.validate(rawMessage.body.toByteArray())
-            LOGGER.debug("Validation of incoming raw message complete: ${rawMessage.logId}")
-            val xmlString = rawMessage.body.toStringUtf8()
-            @Suppress("UNCHECKED_CAST")
-            val map = Xml.fromXml(xmlString) as MutableMap<String, *>
+            val reader = XmlCodecStreamReader(rawMessage, pointer)
 
-            LOGGER.trace("Result of the 'Xml.fromXml' method is ${map.keys} for $xmlString")
-            map -= STANDALONE
-            map -= ENCODING
-
-            if (OMIT_XML_DECLARATION in map) {
-                // U library will tell by this option is there no declaration
-                check(!settings.expectsDeclaration || map[OMIT_XML_DECLARATION] == NO) { "Expecting declaration inside xml data" }
-                map -= OMIT_XML_DECLARATION
+            try {
+                while (reader.hasNext()) { reader.next() }
+                return reader.getMessage()
+            } finally {
+                reader.close()
             }
-
-            if (map.size > 1) {
-                error("There was more than one root node in processed xml, result json has [${map.size}]: ${map.keys.joinToString(", ")}")
-            }
-
-            val msgType: String = pointer?.let { map.getNode<String>(it) } ?: map.keys.first()
-
-            return map.toProto(msgType, rawMessage)
         } catch (e: Exception) {
-            throw DecodeException("Can not decode message. Can not parse XML. ${rawMessage.body.toStringUtf8()}", e)
+            throw DecodeException("Can not decode message ${rawMessage.logId}. Can not parse XML. ${rawMessage.body.toStringUtf8()}", e)
         }
     }
-
-    private inline fun <reified T>Map<*,*>.getNode(pointer: List<String>): T {
-        var current: Any = this
-
-        for (name in pointer) {
-            current = (current as? Map<*, *>)?.get(name) ?: error("Can not find element by name '$name' in path: $pointer")
-        }
-        return current as T
-    }
-
 
     companion object {
         private val LOGGER: Logger = LoggerFactory.getLogger(XmlPipelineCodec::class.java)
 
-        private const val NO = "no"
+//        private val SCHEMA_FACTORY = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI).apply {
+//            errorHandler = XsdErrorHandler()
+//        }
 
-        /**
-         * The constant from [Xml.OMITXMLDECLARATION]
-         */
-        private const val OMIT_XML_DECLARATION = "#omit-xml-declaration"
-        /**
-         * The constant from [Xml.ENCODING]
-         */
-        private const val ENCODING = "#encoding"
-        /**
-         * The constant from [Xml.STANDALONE]
-         */
-        private const val STANDALONE = "#standalone"
     }
 }
