@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Exactpro (Exactpro Systems Limited)
+ * Copyright 2021-2023 Exactpro (Exactpro Systems Limited)
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -22,7 +22,7 @@ plugins {
 
 ext {
     sharedDir = file("${project.rootDir}/shared")
-    sailfishVersion = '3.3.54'
+    sailfishVersion = '3.3.111'
 }
 
 group = 'com.exactpro.th2'
@@ -32,7 +32,7 @@ sourceCompatibility = 11
 targetCompatibility = 11
 
 ext {
-    junitVersion        = '5.8.1'
+    junitVersion        = '5.10.0'
 }
 
 ext.excludeSailfish = { rcd ->
@@ -88,7 +88,7 @@ repositories {
     mavenCentral()
     mavenLocal()
 
-    configurations.all {
+    configurations.configureEach {
         resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
         resolutionStrategy.cacheDynamicVersionsFor 0, 'seconds'
     }
@@ -109,29 +109,30 @@ jar {
 }
 
 dependencies {
-    api platform('com.exactpro.th2:bom:4.1.0')
-    implementation 'com.exactpro.th2:common:5.1.0-dev-version-5+'
-    implementation 'com.exactpro.th2:codec:5.0.0-dev-version-5+'
-    implementation 'com.exactpro.th2:sailfish-utils:3.14.0'
+    api platform("com.exactpro.th2:bom:4.5.0")
+    implementation "com.exactpro.th2:common:5.4.0-dev"
+    implementation "com.exactpro.th2:codec:5.3.0-new-proto-5915838182-509e05a-SNAPSHOT"
+    implementation "com.exactpro.th2:sailfish-utils:4.1.0-dev"
 
     implementation "com.exactpro.sf:sailfish-core:${sailfishVersion}"
 
-    implementation 'org.slf4j:slf4j-api'
+    implementation "org.slf4j:slf4j-api"
 
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlin_version}"
     implementation "org.jetbrains.kotlin:kotlin-reflect:${kotlin_version}"
 
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.13.1'
-    implementation 'com.github.javadev:underscore:1.69'
-    
+    implementation "com.fasterxml.jackson.core:jackson-core"
+    implementation "com.github.javadev:underscore:1.92"
+    implementation "commons-io:commons-io"
+
     testImplementation "org.jetbrains.kotlin:kotlin-test-junit5:${kotlin_version}"
     testImplementation "org.junit.jupiter:junit-jupiter-api:${junitVersion}"
     testImplementation "org.junit.jupiter:junit-jupiter-params:${junitVersion}"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitVersion}"
 
-    compileOnly 'com.google.auto.service:auto-service:1.0.1'
-    annotationProcessor 'com.google.auto.service:auto-service:1.0.1'
-    kapt 'com.google.auto.service:auto-service:1.0.1'
+    compileOnly "com.google.auto.service:auto-service:1.1.1"
+    annotationProcessor "com.google.auto.service:auto-service:1.1.1"
+    kapt "com.google.auto.service:auto-service:1.1.1"
 }
 
 application {
