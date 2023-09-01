@@ -29,8 +29,8 @@ import java.nio.file.Path
 @AutoService(IPipelineCodecFactory::class)
 class XmlPipelineCodecFactory : IPipelineCodecFactory {
     override val settingsClass: Class<out IPipelineCodecSettings> = XmlPipelineCodecSettings::class.java
-    @Deprecated("Please migrate to the protocols property")
-    override val protocol: String = PROTOCOL
+    override val protocols: Set<String>
+        get() = setOf(PROTOCOL)
     private lateinit var xsdMap: Map<String, Path>
 
     override fun init(dictionary: InputStream) {

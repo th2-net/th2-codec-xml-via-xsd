@@ -17,11 +17,14 @@ package com.exactpro.th2.codec.xml
 
 import com.exactpro.th2.codec.DecodeException
 import com.exactpro.th2.codec.api.IPipelineCodec
+import com.exactpro.th2.codec.api.IReportingContext
 import com.exactpro.th2.codec.xml.utils.toMap
 import com.exactpro.th2.codec.xml.utils.toProto
 import com.exactpro.th2.codec.xml.utils.toTransport
 import com.exactpro.th2.codec.xml.xsd.XsdValidator
-import com.exactpro.th2.common.message.*
+import com.exactpro.th2.common.message.messageType
+import com.exactpro.th2.common.message.toJson
+import com.exactpro.th2.common.message.logId
 import com.exactpro.th2.common.grpc.AnyMessage as ProtoAnyMessage
 import com.exactpro.th2.common.grpc.Message as ProtoMessage
 import com.exactpro.th2.common.grpc.MessageGroup as ProtoMessageGroup
@@ -36,7 +39,7 @@ import io.netty.buffer.Unpooled
 import mu.KotlinLogging
 import java.nio.charset.Charset
 import java.nio.file.Path
-import java.util.*
+import java.util.Locale
 
 open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdMap: Map<String, Path>)  : IPipelineCodec {
 
@@ -44,7 +47,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
     private var xmlCharset: Charset = Charsets.UTF_8
     private val validator = XsdValidator(xsdMap, settings.dirtyValidation)
 
-    override fun encode(messageGroup: ProtoMessageGroup): ProtoMessageGroup {
+    override fun encode(messageGroup: ProtoMessageGroup, context: IReportingContext): ProtoMessageGroup {
         val messages = messageGroup.messagesList
         if (messages.none { it.hasMessage() }) {
             return messageGroup
@@ -59,7 +62,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
         ).build()
     }
 
-    override fun encode(messageGroup: MessageGroup): MessageGroup {
+    override fun encode(messageGroup: MessageGroup, context: IReportingContext): MessageGroup {
         val messages = messageGroup.messages
         if (messages.none { it is ParsedMessage }) {
             return messageGroup
@@ -84,7 +87,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
         val xmlString = Xml.toXml(map)
 
         validator.validate(xmlString.toByteArray())
-        LOGGER.debug("Validation of incoming parsed message complete: ${message.messageType}")
+        LOGGER.debug { "Validation of incoming parsed message complete: ${message.messageType}" }
 
         return ProtoRawMessage.newBuilder().apply {
             if (message.hasParentEventId()) parentEventId = message.parentEventId
@@ -100,7 +103,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
         val xmlString = Xml.toXml(map)
 
         validator.validate(xmlString.toByteArray())
-        LOGGER.debug("Validation of incoming parsed message complete: ${message.type}")
+        LOGGER.debug { "Validation of incoming parsed message complete: ${message.type}" }
 
         return RawMessage(
             id = message.id,
@@ -111,7 +114,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
         )
     }
 
-    override fun decode(messageGroup: ProtoMessageGroup): ProtoMessageGroup {
+    override fun decode(messageGroup: ProtoMessageGroup, context: IReportingContext): ProtoMessageGroup {
         val messages = messageGroup.messagesList
         if (messages.none { it.hasRawMessage() }) {
             return messageGroup
@@ -132,7 +135,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
         }.build()
     }
 
-    override fun decode(messageGroup: MessageGroup): MessageGroup {
+    override fun decode(messageGroup: MessageGroup, context: IReportingContext): MessageGroup {
         val messages = messageGroup.messages
         if (messages.none { it is RawMessage }) {
             return messageGroup
@@ -186,12 +189,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
         val xmlString = rawMessage.body.toStringUtf8()
 
         try {
-            val logId = rawMessage.logId
-            validator.validate(rawMessage.body.toByteArray())
-            LOGGER.debug("Validation of incoming raw message complete: $logId")
-
-            val (msgType, map) = decodeOne(rawMessage.body.toByteArray(), xmlString, logId)
-
+            val (msgType, map) = decodeOne(rawMessage.body.toByteArray(), xmlString, rawMessage.logId)
             return map.toProto(msgType, rawMessage)
         } catch (e: Exception) {
             throw DecodeException("Can not decode message. Can not parse XML. $xmlString", e)
@@ -204,12 +202,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
     private fun decodeOneTransport(rawMessage: RawMessage): ParsedMessage {
         val xmlString = rawMessage.body.toString(Charsets.UTF_8)
         try {
-            val logId = rawMessage.logId
-            validator.validate(rawMessage.body.toByteArray())
-            LOGGER.debug { "Validation of incoming raw message completed: $logId" }
-
-            val (msgType, map) = decodeOne(rawMessage.body.toByteArray(), xmlString, logId)
-
+            val (msgType, map) = decodeOne(rawMessage.body.toByteArray(), xmlString, rawMessage.logId)
             return map.toTransport(msgType, rawMessage)
         } catch (e: Exception) {
             throw DecodeException("Can not decode message. Can not parse XML. $xmlString", e)
