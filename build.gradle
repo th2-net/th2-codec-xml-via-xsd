@@ -15,6 +15,8 @@
 
 import com.github.jk1.license.filter.LicenseBundleNormalizer
 import com.github.jk1.license.render.JsonReportRenderer
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     id "com.palantir.docker" version "0.25.0"
@@ -34,8 +36,8 @@ ext {
 group = 'com.exactpro.th2'
 version = release_version
 
-sourceCompatibility = 11
-targetCompatibility = 11
+sourceCompatibility = JavaVersion.VERSION_11
+targetCompatibility = JavaVersion.VERSION_11
 
 ext {
     junitVersion        = '5.10.0'
@@ -138,12 +140,8 @@ sourceSets {
     main.kotlin.srcDirs += "src/main/kotlin"
 }
 
-compileKotlin {
-    kotlinOptions.jvmTarget = '11'
-}
-
-compileTestKotlin {
-    kotlinOptions.jvmTarget = '11'
+tasks.withType(KotlinCompile).configureEach {
+    compilerOptions.jvmTarget.set(JvmTarget.JVM_11)
 }
 
 clean {
