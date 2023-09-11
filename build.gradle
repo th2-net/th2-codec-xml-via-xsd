@@ -18,12 +18,12 @@ import com.github.jk1.license.render.JsonReportRenderer
 
 plugins {
     id "com.palantir.docker" version "0.25.0"
-    id "org.jetbrains.kotlin.jvm" version "${kotlin_version}"
-    id "org.jetbrains.kotlin.kapt" version "${kotlin_version}"
+    id "org.jetbrains.kotlin.jvm" version "$kotlin_version"
+    id "org.jetbrains.kotlin.kapt" version "$kotlin_version"
     id "application"
     id "org.owasp.dependencycheck" version "8.4.0"
     id "com.gorylenko.gradle-git-properties" version "2.4.1"
-    id 'com.github.jk1.dependency-license-report' version "2.5"
+    id "com.github.jk1.dependency-license-report" version "2.5"
     id "de.undercouch.download" version "5.5.0"
 }
 
@@ -139,18 +139,14 @@ sourceSets {
 }
 
 compileKotlin {
-    kotlinOptions {
-        jvmTarget = "11"
-    }
+    kotlinOptions.jvmTarget = '11'
 }
 
 compileTestKotlin {
-    kotlinOptions {
-        jvmTarget = "11"
-    }
+    kotlinOptions.jvmTarget = '11'
 }
 
-clean {+6
+clean {
     delete sharedDir
 }
 

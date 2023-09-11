@@ -34,7 +34,7 @@ import com.exactpro.th2.common.schema.message.impl.rabbitmq.transport.ParsedMess
 import com.exactpro.th2.common.schema.message.impl.rabbitmq.transport.RawMessage
 import com.exactpro.th2.common.schema.message.impl.rabbitmq.transport.toByteArray
 import com.github.underscore.Xml
-import com.google.protobuf.ByteString
+import com.google.protobuf.UnsafeByteOperations
 import io.netty.buffer.Unpooled
 import mu.KotlinLogging
 import java.nio.charset.Charset
@@ -84,9 +84,9 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
 
     private fun encodeOne(message: ProtoMessage): ProtoRawMessage {
         val map = message.toMap()
-        val xmlString = Xml.toXml(map)
+        val xmlStringBuffer = Xml.toXml(map).toByteArray(xmlCharset)
 
-        validator.validate(xmlString.toByteArray())
+        validator.validate(xmlStringBuffer)
         LOGGER.debug { "Validation of incoming parsed message complete: ${message.messageType}" }
 
         return ProtoRawMessage.newBuilder().apply {
@@ -94,15 +94,15 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
             metadataBuilder.putAllProperties(message.metadata.propertiesMap)
             metadataBuilder.protocol = XmlPipelineCodecFactory.PROTOCOL
             metadataBuilder.id = message.metadata.id
-            body = ByteString.copyFrom(xmlString, xmlCharset)
+            body = UnsafeByteOperations.unsafeWrap(xmlStringBuffer)
         }.build()
     }
 
     private fun encodeOne(message: ParsedMessage): RawMessage {
         val map = message.body
-        val xmlString = Xml.toXml(map)
+        val xmlStringBuffer = Xml.toXml(map).toByteArray(xmlCharset)
 
-        validator.validate(xmlString.toByteArray())
+        validator.validate(xmlStringBuffer)
         LOGGER.debug { "Validation of incoming parsed message complete: ${message.type}" }
 
         return RawMessage(
@@ -110,7 +110,7 @@ open class XmlPipelineCodec(private val settings: XmlPipelineCodecSettings, xsdM
             eventId = message.eventId,
             metadata = message.metadata,
             protocol = XmlPipelineCodecFactory.PROTOCOL,
-            body = Unpooled.copiedBuffer(xmlString, xmlCharset)
+            body = Unpooled.wrappedBuffer(xmlStringBuffer)
         )
     }
 
