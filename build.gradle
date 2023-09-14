@@ -113,9 +113,6 @@ dependencies {
     implementation "commons-io:commons-io"
 
     testImplementation "org.jetbrains.kotlin:kotlin-test-junit5:$kotlin_version"
-    testImplementation "org.junit.jupiter:junit-jupiter-api:$junitVersion"
-    testImplementation "org.junit.jupiter:junit-jupiter-params:$junitVersion"
-    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
 
     compileOnly "com.google.auto.service:auto-service:1.1.1"
     annotationProcessor "com.google.auto.service:auto-service:1.1.1"
