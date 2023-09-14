@@ -16,6 +16,7 @@
 package com.exactpro.th2.codec.xml.utils
 
 import com.exactpro.th2.codec.api.IPipelineCodec
+import com.exactpro.th2.codec.api.impl.ReportingContext
 import com.exactpro.th2.codec.xml.XmlPipelineCodec
 import com.exactpro.th2.codec.xml.XmlPipelineCodecFactory.Companion.decodeInputToDictionary
 import com.exactpro.th2.codec.xml.XmlPipelineCodecSettings
@@ -33,11 +34,11 @@ import java.util.Base64
 import kotlin.test.assertEquals
 
 abstract class XmlTest(jsonPathToType: String? = null, nameOfXsdResource: String? = null) {
-
+    protected val reportingContext = ReportingContext()
     protected val codec: IPipelineCodec
 
     protected fun checkEncode(xml: String, message: Message.Builder) {
-        val group = codec.encode(MessageGroup.newBuilder().addMessages(AnyMessage.newBuilder().setMessage(message)).build())
+        val group = codec.encode(MessageGroup.newBuilder().addMessages(AnyMessage.newBuilder().setMessage(message)).build(), reportingContext)
         assertEquals(1, group.messagesCount)
 
         LOGGER.info("ENCODE_RESULT: ${TextFormat.shortDebugString(group)}")
@@ -49,7 +50,7 @@ abstract class XmlTest(jsonPathToType: String? = null, nameOfXsdResource: String
     }
 
     protected fun checkDecode(xml: String, message: Message.Builder) {
-        val group = codec.decode(createRawMessage(xml))
+        val group = codec.decode(createRawMessage(xml), reportingContext)
         assertEquals(1, group.messagesCount)
 
         LOGGER.info("DECODE_RESULT: ${TextFormat.shortDebugString(group)}")

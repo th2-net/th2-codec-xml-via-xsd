@@ -100,22 +100,22 @@ jar {
 dependencies {
     api platform("com.exactpro.th2:bom:4.5.0")
     implementation "com.exactpro.th2:common:5.4.0-dev"
-    implementation "com.exactpro.th2:codec:5.3.0-new-proto-6049749662-17ae1b8-SNAPSHOT"
+    implementation "com.exactpro.th2:codec:5.3.0-dev"
 
     implementation "org.slf4j:slf4j-api"
     implementation "io.github.microutils:kotlin-logging:3.0.5"
 
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlin_version}"
-    implementation "org.jetbrains.kotlin:kotlin-reflect:${kotlin_version}"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+    implementation "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
 
     implementation "com.fasterxml.jackson.core:jackson-core"
-    implementation "com.github.javadev:underscore:1.92"
+    implementation "com.github.javadev:underscore:1.93"
     implementation "commons-io:commons-io"
 
-    testImplementation "org.jetbrains.kotlin:kotlin-test-junit5:${kotlin_version}"
-    testImplementation "org.junit.jupiter:junit-jupiter-api:${junitVersion}"
-    testImplementation "org.junit.jupiter:junit-jupiter-params:${junitVersion}"
-    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitVersion}"
+    testImplementation "org.jetbrains.kotlin:kotlin-test-junit5:$kotlin_version"
+    testImplementation "org.junit.jupiter:junit-jupiter-api:$junitVersion"
+    testImplementation "org.junit.jupiter:junit-jupiter-params:$junitVersion"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
 
     compileOnly "com.google.auto.service:auto-service:1.1.1"
     annotationProcessor "com.google.auto.service:auto-service:1.1.1"
