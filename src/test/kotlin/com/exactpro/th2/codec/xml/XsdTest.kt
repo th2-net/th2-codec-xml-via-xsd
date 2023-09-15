@@ -62,7 +62,7 @@ class XsdTest : XmlTest() {
 
 
         assertFailsWith<IllegalStateException> ("Error needed due no xsd for xml validation") {
-            codec.decode(group)
+            codec.decode(group, reportingContext)
         }
     }
 

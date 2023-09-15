@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Exactpro (Exactpro Systems Limited)
+ * Copyright 2021-2023 Exactpro (Exactpro Systems Limited)
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,12 +16,14 @@
 package com.exactpro.th2.codec.xml.utils
 
 import com.exactpro.th2.codec.xml.XmlPipelineCodecFactory
-import com.exactpro.th2.common.grpc.Message
-import com.exactpro.th2.common.grpc.RawMessage
+import com.exactpro.th2.common.grpc.Message as ProtoMessage
+import com.exactpro.th2.common.grpc.RawMessage as ProtoRawMessage
 import com.exactpro.th2.common.grpc.Value
 import com.exactpro.th2.common.message.message
 import com.exactpro.th2.common.message.messageType
 import com.exactpro.th2.common.message.set
+import com.exactpro.th2.common.schema.message.impl.rabbitmq.transport.ParsedMessage
+import com.exactpro.th2.common.schema.message.impl.rabbitmq.transport.RawMessage
 import com.exactpro.th2.common.value.getMessage
 import com.exactpro.th2.common.value.toValue
 import java.lang.IllegalArgumentException
@@ -52,7 +54,7 @@ private fun MutableMap<String, *>.toProtoValue(name: String = ""): Value? {
     return message.build().toValue()
 }
 
-fun MutableMap<String, *>.toProto(type: String, rawMessage: RawMessage): Message {
+fun MutableMap<String, *>.toProto(type: String, rawMessage: ProtoRawMessage): ProtoMessage {
     val builder = toProtoValue(type)?.getMessage()?.toBuilder()
         ?: throw IllegalArgumentException("JsonNode $this does not contain a message")
     val rawMetadata = rawMessage.metadata
@@ -66,6 +68,17 @@ fun MutableMap<String, *>.toProto(type: String, rawMessage: RawMessage): Message
     }
 
     return builder.build()
+}
+
+fun MutableMap<String, *>.toTransport(type: String, rawMessage: RawMessage): ParsedMessage {
+    return ParsedMessage(
+        id = rawMessage.id,
+        eventId = rawMessage.eventId,
+        type = type,
+        metadata = rawMessage.metadata,
+        protocol = XmlPipelineCodecFactory.PROTOCOL,
+        body = this
+    )
 }
 
 fun MutableMap<String, *>.removeSelfClosing() = this.apply { remove("-self-closing") }

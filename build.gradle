@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Exactpro (Exactpro Systems Limited)
+ * Copyright 2021-2023 Exactpro (Exactpro Systems Limited)
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,33 +13,34 @@
  * limitations under the License.
  */
 
+import com.github.jk1.license.filter.LicenseBundleNormalizer
+import com.github.jk1.license.render.JsonReportRenderer
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
-    id 'com.palantir.docker' version '0.25.0'
-    id 'org.jetbrains.kotlin.jvm' version "${kotlin_version}"
-    id 'org.jetbrains.kotlin.kapt' version "${kotlin_version}"
-    id 'application'
+    id "com.palantir.docker" version "0.25.0"
+    id "org.jetbrains.kotlin.jvm" version "$kotlin_version"
+    id "org.jetbrains.kotlin.kapt" version "$kotlin_version"
+    id "application"
+    id "org.owasp.dependencycheck" version "8.4.0"
+    id "com.gorylenko.gradle-git-properties" version "2.4.1"
+    id "com.github.jk1.dependency-license-report" version "2.5"
+    id "de.undercouch.download" version "5.5.0"
 }
 
 ext {
     sharedDir = file("${project.rootDir}/shared")
-    sailfishVersion = '3.3.54'
 }
 
 group = 'com.exactpro.th2'
 version = release_version
 
-sourceCompatibility = 11
-targetCompatibility = 11
+sourceCompatibility = JavaVersion.VERSION_11
+targetCompatibility = JavaVersion.VERSION_11
 
 ext {
-    junitVersion        = '5.8.1'
-}
-
-ext.excludeSailfish = { rcd ->
-    rcd.excludeModule("com.exactpro.sf", "sailfish-core")
-    rcd.excludeModule("com.exactpro.sf", "sailfish-common")
-    rcd.excludeModule("com.exactpro.sf", "sailfish-rest-api-client")
-    rcd.excludeModule("com.exactpro.sf", "service-http")
+    junitVersion        = '5.10.0'
 }
 
 repositories {
@@ -51,30 +52,19 @@ repositories {
     maven {
         name 'Sonatype_snapshots'
         url 'https://s01.oss.sonatype.org/content/repositories/snapshots/'
-        content {
-            excludeSailfish(it)
-        }
     }
 
-    // ignoreGradleMetadataRedirection is used for sonatype because
-    // Sailfish dependencies have constrains that interfere with our BOM
-    // so we exclude Gradle metadata for this repositories.
-    // We've checked these versions - they are compatible and safe to use
     maven {
         name 'Sonatype_snapshots'
         url 'https://s01.oss.sonatype.org/content/repositories/snapshots/'
         metadataSources {
             mavenPom()
             artifact()
-            ignoreGradleMetadataRedirection()
         }
     }
     maven {
         name 'Sonatype_releases'
         url 'https://s01.oss.sonatype.org/content/repositories/releases/'
-        content {
-            excludeSailfish(it)
-        }
     }
     maven {
         name 'Sonatype_releases'
@@ -82,13 +72,12 @@ repositories {
         metadataSources {
             mavenPom()
             artifact()
-            ignoreGradleMetadataRedirection()
         }
     }
     mavenCentral()
     mavenLocal()
 
-    configurations.all {
+    configurations.configureEach {
         resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
         resolutionStrategy.cacheDynamicVersionsFor 0, 'seconds'
     }
@@ -109,29 +98,25 @@ jar {
 }
 
 dependencies {
-    api platform('com.exactpro.th2:bom:4.1.0')
-    implementation 'com.exactpro.th2:common:5.1.0-dev-version-5+'
-    implementation 'com.exactpro.th2:codec:5.0.0-dev-version-5+'
-    implementation 'com.exactpro.th2:sailfish-utils:3.14.0'
+    api platform("com.exactpro.th2:bom:4.5.0")
+    implementation "com.exactpro.th2:common:5.4.0-dev"
+    implementation "com.exactpro.th2:codec:5.3.0-dev"
 
-    implementation "com.exactpro.sf:sailfish-core:${sailfishVersion}"
+    implementation "org.slf4j:slf4j-api"
+    implementation "io.github.microutils:kotlin-logging:3.0.5"
 
-    implementation 'org.slf4j:slf4j-api'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+    implementation "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
 
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlin_version}"
-    implementation "org.jetbrains.kotlin:kotlin-reflect:${kotlin_version}"
+    implementation "com.fasterxml.jackson.core:jackson-core"
+    implementation "com.github.javadev:underscore:1.93"
+    implementation "commons-io:commons-io"
 
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.13.1'
-    implementation 'com.github.javadev:underscore:1.69'
-    
-    testImplementation "org.jetbrains.kotlin:kotlin-test-junit5:${kotlin_version}"
-    testImplementation "org.junit.jupiter:junit-jupiter-api:${junitVersion}"
-    testImplementation "org.junit.jupiter:junit-jupiter-params:${junitVersion}"
-    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitVersion}"
+    testImplementation "org.jetbrains.kotlin:kotlin-test-junit5:$kotlin_version"
 
-    compileOnly 'com.google.auto.service:auto-service:1.0.1'
-    annotationProcessor 'com.google.auto.service:auto-service:1.0.1'
-    kapt 'com.google.auto.service:auto-service:1.0.1'
+    compileOnly "com.google.auto.service:auto-service:1.1.1"
+    annotationProcessor "com.google.auto.service:auto-service:1.1.1"
+    kapt "com.google.auto.service:auto-service:1.1.1"
 }
 
 application {
@@ -152,20 +137,40 @@ sourceSets {
     main.kotlin.srcDirs += "src/main/kotlin"
 }
 
-compileKotlin {
-    kotlinOptions {
-        jvmTarget = "11"
-    }
-}
-
-compileTestKotlin {
-    kotlinOptions {
-        jvmTarget = "11"
-    }
+tasks.withType(KotlinCompile).configureEach {
+    compilerOptions.jvmTarget.set(JvmTarget.JVM_11)
 }
 
 clean {
     delete sharedDir
+}
+
+dependencyCheck {
+    formats = ['SARIF', 'JSON', 'HTML']
+    failBuildOnCVSS = 5
+    suppressionFile = file('suppressions.xml')
+    analyzers {
+        assemblyEnabled = false
+        nugetconfEnabled = false
+        nodeEnabled = false
+    }
+}
+
+licenseReport {
+    def licenseNormalizerBundlePath = "$buildDir/license-normalizer-bundle.json"
+
+    if (!file(licenseNormalizerBundlePath).exists()) {
+        download.run {
+            src 'https://raw.githubusercontent.com/th2-net/.github/main/license-compliance/gradle-license-report/license-normalizer-bundle.json'
+            dest "$buildDir/license-normalizer-bundle.json"
+            overwrite false
+        }
+    }
+
+    filters = [new LicenseBundleNormalizer(licenseNormalizerBundlePath, false)]
+    renderers = [new JsonReportRenderer('licenses.json', false)]
+    excludeOwnGroup = false
+    allowedLicensesFile = new URL("https://raw.githubusercontent.com/th2-net/.github/main/license-compliance/gradle-license-report/allowed-licenses.json")
 }
 
 test {

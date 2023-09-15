@@ -142,6 +142,10 @@ spec:
 
 ## Changelog
 
+### v2.1.0
+
+* th2 transport protocol support
+
 ### v0.0.4
 
 #### Changed:
