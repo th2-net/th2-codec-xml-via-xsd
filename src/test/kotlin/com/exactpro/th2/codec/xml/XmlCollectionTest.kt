@@ -21,7 +21,6 @@ import com.exactpro.th2.common.message.addField
 import com.exactpro.th2.common.message.addFields
 import com.exactpro.th2.common.message.message
 import org.junit.jupiter.api.Test
-import java.util.*
 
 class XmlCollectionTest : XmlTest() {
 

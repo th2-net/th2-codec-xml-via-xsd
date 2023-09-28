@@ -21,7 +21,6 @@ import com.exactpro.th2.common.grpc.AnyMessage
 import com.exactpro.th2.common.grpc.MessageGroup
 import com.exactpro.th2.common.grpc.RawMessage
 import com.google.protobuf.ByteString
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import java.nio.file.Files
 import java.nio.file.Path
@@ -45,7 +44,6 @@ class XsdTest : XmlTest() {
     }
 
     @Test
-//    @Disabled("validation temporay disabled")
     fun `xsd not found exception`() {
         val xml = """
             <Attributes schemaLocation="test.123.123.01 test.xsd" defaultMsgAttrA="123" msgAttrA="45" msgAttrB="67">

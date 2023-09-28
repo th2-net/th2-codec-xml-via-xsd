@@ -57,15 +57,14 @@ Error from validation process can be disabled for test purposes by `dirtyValidat
 ### Configuration example
 
 * typePointer - Path to message type value for decode (null by default)
-
-## Temporary disabled
 * dirtyValidation - Disable/enable error during validation phase. If disabled all errors will be only visible in log  (false by default)
-* expectsDeclaration - Disable/enable validation of declaration - is it exist or not (true by default)
+* schemas - mapping between schema location value and a dictionary alias that should be used to load this schema
 
 ```yaml
 typePointer: /root/node/node2/type
 dirtyValidation: false
-expectsDeclaration: false
+schemas:
+  "test.xsd": "${dictionary_link:dict-xml}"
 ```
 
 For example:
@@ -79,7 +78,6 @@ spec:
   custom-config:
     codecSettings:
       typePointer: /root/node/node2/type
-#      dirtyValidation: false
 ```
 
 ## Required pins

@@ -93,7 +93,6 @@ class XmlPipelineCodecTest : XmlTest() {
             """.trimIndent())
 
         Assertions.assertDoesNotThrow { withoutValidationCodec.decode(xml, reportingContext) }
-//        Assertions.assertDoesNotThrow { withValidationCodec.decode(xml, reportingContext) }
 
         // Formatted message with XML declaration
         xml = createMessageGroup("""
@@ -103,7 +102,6 @@ class XmlPipelineCodecTest : XmlTest() {
             """.trimIndent())
 
         Assertions.assertDoesNotThrow { withoutValidationCodec.decode(xml, reportingContext) }
-//        Assertions.assertThrows(IllegalStateException::class.java) { withValidationCodec.decode(xml, reportingContext) }
     }
 
     @Test
