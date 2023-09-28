@@ -82,9 +82,8 @@ class XmlPipelineCodecTest : XmlTest() {
     }
 
     @Test
-    fun `test validation of xml declaration`() {
-        val withoutValidationCodec = XmlPipelineCodec(XmlPipelineCodecSettings(expectsDeclaration = false), mapOf())
-        val withValidationCodec = XmlPipelineCodec(XmlPipelineCodecSettings(expectsDeclaration = true), mapOf())
+    fun `test xml declaration`() {
+        val withoutValidationCodec = XmlPipelineCodec(XmlPipelineCodecSettings(), mapOf())
 
         // Message with XML declaration
         var xml: MessageGroup = createMessageGroup("""<?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -94,7 +93,7 @@ class XmlPipelineCodecTest : XmlTest() {
             """.trimIndent())
 
         Assertions.assertDoesNotThrow { withoutValidationCodec.decode(xml, reportingContext) }
-        Assertions.assertDoesNotThrow { withValidationCodec.decode(xml, reportingContext) }
+//        Assertions.assertDoesNotThrow { withValidationCodec.decode(xml, reportingContext) }
 
         // Formatted message with XML declaration
         xml = createMessageGroup("""
@@ -104,12 +103,12 @@ class XmlPipelineCodecTest : XmlTest() {
             """.trimIndent())
 
         Assertions.assertDoesNotThrow { withoutValidationCodec.decode(xml, reportingContext) }
-        Assertions.assertThrows(IllegalStateException::class.java) { withValidationCodec.decode(xml, reportingContext) }
+//        Assertions.assertThrows(IllegalStateException::class.java) { withValidationCodec.decode(xml, reportingContext) }
     }
 
     @Test
-    fun `test validation of xml with few root elements`() {
-        val withoutValidationCodec = XmlPipelineCodec(XmlPipelineCodecSettings(expectsDeclaration = false), mapOf())
+    fun `test xml with few root elements`() {
+        val withoutValidationCodec = XmlPipelineCodec(XmlPipelineCodecSettings())
 
         val xml = createMessageGroup("""<?xml version="1.0" encoding="iso-8859-1" standalone="yes"?>
             <Msg>

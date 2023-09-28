@@ -16,6 +16,7 @@
 package com.exactpro.th2.codec.xml
 
 import com.exactpro.th2.codec.api.IPipelineCodec
+import com.exactpro.th2.codec.api.IPipelineCodecContext
 import com.exactpro.th2.codec.api.IPipelineCodecFactory
 import com.exactpro.th2.codec.api.IPipelineCodecSettings
 import com.exactpro.th2.codec.xml.utils.ZipBase64Codec
@@ -25,44 +26,45 @@ import java.io.InputStream
 import com.google.auto.service.AutoService
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 
 @AutoService(IPipelineCodecFactory::class)
 class XmlPipelineCodecFactory : IPipelineCodecFactory {
     override val settingsClass: Class<out IPipelineCodecSettings> = XmlPipelineCodecSettings::class.java
     override val protocols: Set<String>
         get() = setOf(PROTOCOL)
-    private lateinit var xsdMap: Map<String, Path>
+    private lateinit var context: IPipelineCodecContext
+    private val lock = ReentrantLock()
+    @Volatile
+    private lateinit var xsdMap: Map<String, () -> InputStream>
 
-    override fun init(dictionary: InputStream) {
-        xsdMap = decodeInputToDictionary(dictionary, XSD_FOLDER)
-        if (xsdMap.isEmpty()) {
-            throw IllegalArgumentException("No xsd were found from input dictionary!")
-        }
+    override fun init(pipelineCodecContext: IPipelineCodecContext) {
+        context = pipelineCodecContext
     }
 
     override fun create(settings: IPipelineCodecSettings?): IPipelineCodec {
-        return XmlPipelineCodec(settings as? XmlPipelineCodecSettings ?: XmlPipelineCodecSettings(), xsdMap)
+        val codecSettings = settings as? XmlPipelineCodecSettings ?: XmlPipelineCodecSettings()
+        return XmlPipelineCodec(codecSettings, initXsdMap(codecSettings))
+    }
+
+    private fun initXsdMap(settings: XmlPipelineCodecSettings): Map<String, () -> InputStream> {
+        return lock.withLock {
+            if (::xsdMap.isInitialized) {
+                xsdMap
+            } else {
+                LOGGER.info { "Loading schemas from settings" }
+                settings.schemas.mapValues { (_, alias) ->
+                    { context[alias] }
+                }.also {
+                    xsdMap = it
+                }
+            }
+        }
     }
 
     companion object {
-        private const val XSD_FOLDER: String = "/tmp/xsd"
         private val LOGGER = KotlinLogging.logger { }
         const val PROTOCOL = "XML"
-
-        fun decodeInputToDictionary(dictionary: InputStream, parentDir: String): Map<String, Path> = dictionary.use {
-            val parentDirPath = Path.of(parentDir)
-            Files.createDirectory(parentDirPath)
-            val xsdDir = Files.createTempDirectory(parentDirPath, "")
-            val pathMap = ZipBase64Codec.decode(it.readAllBytes(), xsdDir.toFile())
-
-            LOGGER.info {
-                "Decoded xsd files: ${
-                    FileUtils.listFiles(parentDirPath.toFile(), Array(1) {"proto"}, true).map { file ->
-                        parentDirPath.relativize(file.toPath())
-                    }.toList()
-                }"
-            }
-            pathMap
-        }
     }
 }

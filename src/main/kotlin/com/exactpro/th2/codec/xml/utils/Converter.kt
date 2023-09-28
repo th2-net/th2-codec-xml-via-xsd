@@ -16,6 +16,7 @@
 package com.exactpro.th2.codec.xml.utils
 
 import com.exactpro.th2.codec.xml.XmlPipelineCodecFactory
+import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.Message as ProtoMessage
 import com.exactpro.th2.common.grpc.RawMessage as ProtoRawMessage
 import com.exactpro.th2.common.grpc.Value
@@ -29,10 +30,10 @@ import com.exactpro.th2.common.value.toValue
 import java.lang.IllegalArgumentException
 
 @Suppress("UNCHECKED_CAST")
-private fun MutableMap<String, *>.toProtoValue(name: String = ""): Value? {
+private fun MutableMap<String, *>.toProtoValue(name: String = ""): Value {
     this.removeSelfClosing()
     if (this.isEmpty()) {
-        return null
+        return Message.getDefaultInstance().toValue()
     }
     val message = message().also { builder ->
         builder.messageType = name
@@ -41,7 +42,7 @@ private fun MutableMap<String, *>.toProtoValue(name: String = ""): Value? {
         message[key] = when (value) {
             is Map<*, *> -> (value as MutableMap<String, *>).toProtoValue()
             is String -> value
-            is ArrayList<*> -> value.mapNotNull {
+            is List<*> -> value.mapNotNull {
                 when (it) {
                     is Map<*, *> -> (it as MutableMap<String, *>).toProtoValue()
                     else -> it.toValue()
@@ -55,7 +56,7 @@ private fun MutableMap<String, *>.toProtoValue(name: String = ""): Value? {
 }
 
 fun MutableMap<String, *>.toProto(type: String, rawMessage: ProtoRawMessage): ProtoMessage {
-    val builder = toProtoValue(type)?.getMessage()?.toBuilder()
+    val builder = toProtoValue(type).getMessage()?.toBuilder()
         ?: throw IllegalArgumentException("JsonNode $this does not contain a message")
     val rawMetadata = rawMessage.metadata
 
@@ -70,7 +71,7 @@ fun MutableMap<String, *>.toProto(type: String, rawMessage: ProtoRawMessage): Pr
     return builder.build()
 }
 
-fun MutableMap<String, *>.toTransport(type: String, rawMessage: RawMessage): ParsedMessage {
+fun Map<String, *>.toTransport(type: String, rawMessage: RawMessage): ParsedMessage {
     return ParsedMessage(
         id = rawMessage.id,
         eventId = rawMessage.eventId,

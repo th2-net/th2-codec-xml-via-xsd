@@ -23,16 +23,17 @@ import org.w3c.dom.NamedNodeMap
 import org.w3c.dom.Node
 import org.w3c.dom.NodeList
 import java.io.ByteArrayInputStream
-import java.nio.file.Path
+import java.io.InputStream
 import javax.xml.XMLConstants
 import javax.xml.parsers.DocumentBuilder
 import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.parsers.ParserConfigurationException
 import javax.xml.transform.dom.DOMSource
+import javax.xml.transform.stream.StreamSource
 import javax.xml.validation.SchemaFactory
 import javax.xml.validation.Validator
 
-class XsdValidator(private val xsdMap: Map<String, Path>, private val dirtyValidation: Boolean) {
+class XsdValidator(private val xsdMap: Map<String, () -> InputStream>, private val dirtyValidation: Boolean) {
 
     fun validate(xml: ByteArray) {
         try {
@@ -44,10 +45,9 @@ class XsdValidator(private val xsdMap: Map<String, Path>, private val dirtyValid
                 attributes.forEach { attribute ->
                     val schemas = getSchemas(attribute.nodeValue)
                     schemas.forEach { schema ->
-                        val xsdPath = checkNotNull(xsdMap[schema.value]) { "Cannot find xsd for current `${attribute.nodeName}` attribute: ${attribute.nodeValue}" }
+                        val xsdLoader = checkNotNull(xsdMap[schema.value]) { "Cannot find xsd for current `${attribute.nodeName}` attribute: ${attribute.nodeValue}" }
 
-                        val xsdFile = xsdPath.toFile()
-                        val schemaFile = SCHEMA_FACTORY.newSchema(xsdFile) // is it worth for each time??
+                        val schemaFile = SCHEMA_FACTORY.newSchema(StreamSource(xsdLoader())) // is it worth for each time??
 
                         val validator: Validator = schemaFile.newValidator().apply {
                             errorHandler = XsdErrorHandler()
@@ -55,7 +55,7 @@ class XsdValidator(private val xsdMap: Map<String, Path>, private val dirtyValid
 
                         val item = documentXML.getElementsByTagNameNS(attribute.nodeValue, "*").item(0)
                         validator.validate(DOMSource(item))
-                        LOGGER.debug("Validation of raw message with XSD: ${xsdPath.fileName} finished")
+                        LOGGER.debug("Validation of raw message with XSD: ${schema.value} finished")
                     }
                 }
             }

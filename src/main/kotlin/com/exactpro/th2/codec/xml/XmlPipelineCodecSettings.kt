@@ -15,10 +15,12 @@
 
 package com.exactpro.th2.codec.xml
 
+import com.exactpro.th2.codec.api.DictionaryAlias
 import com.exactpro.th2.codec.api.IPipelineCodecSettings
 
 class XmlPipelineCodecSettings(
     val typePointer: String? = null,
     val dirtyValidation: Boolean = false,
     val expectsDeclaration: Boolean = true,
+    val schemas: Map<String, DictionaryAlias> = emptyMap(),
 ) : IPipelineCodecSettings
