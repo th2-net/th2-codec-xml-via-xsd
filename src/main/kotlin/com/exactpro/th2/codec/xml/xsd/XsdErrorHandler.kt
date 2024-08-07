@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Exactpro (Exactpro Systems Limited)
+ * Copyright 2021-2024 Exactpro (Exactpro Systems Limited)
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -15,8 +15,7 @@
 
 package com.exactpro.th2.codec.xml.xsd
 
-import mu.KotlinLogging
-import org.slf4j.Logger
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.xml.sax.ErrorHandler
 import org.xml.sax.SAXException
 import org.xml.sax.SAXParseException
@@ -44,11 +43,11 @@ class XsdErrorHandler : ErrorHandler {
         val lineNumber: Int = exception.lineNumber
         val columnNumber: Int = exception.columnNumber
         val message: String? = exception.message
-        LOGGER.error("[$level] line nr: $lineNumber column nr: $columnNumber \nmessage: $message")
+        LOGGER.error { "[$level] line nr: $lineNumber column nr: $columnNumber \nmessage: $message" }
         throw SAXException("[$level] line nr: $lineNumber column nr: $columnNumber \nmessage: $message", exception)
     }
 
     companion object {
-        private val LOGGER: Logger = KotlinLogging.logger {  }
+        private val LOGGER = KotlinLogging.logger { }
     }
 }

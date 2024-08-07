@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2022 Exactpro (Exactpro Systems Limited)
+ * Copyright 2021-2024 Exactpro (Exactpro Systems Limited)
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -23,22 +23,21 @@ import com.exactpro.th2.common.grpc.AnyMessage
 import com.exactpro.th2.common.grpc.Message
 import com.exactpro.th2.common.grpc.MessageGroup
 import com.google.protobuf.TextFormat
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.apache.commons.io.FileUtils
-import org.slf4j.Logger
 import java.io.File
 import java.util.Base64
 import kotlin.test.assertEquals
 
 abstract class XmlTest(pathToType: String? = null) {
     protected val reportingContext = ReportingContext()
-    protected val codec: IPipelineCodec
+    protected val codec: IPipelineCodec = XmlPipelineCodec(XmlPipelineCodecSettings(pathToType))
 
     protected fun checkEncode(xml: String, message: Message.Builder) {
         val group = codec.encode(MessageGroup.newBuilder().addMessages(AnyMessage.newBuilder().setMessage(message)).build(), reportingContext)
         assertEquals(1, group.messagesCount)
 
-        LOGGER.info("ENCODE_RESULT: ${TextFormat.shortDebugString(group)}")
+        LOGGER.info { "ENCODE_RESULT: ${TextFormat.shortDebugString(group)}" }
 
         assertEquals(
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n$xml",
@@ -50,21 +49,16 @@ abstract class XmlTest(pathToType: String? = null) {
         val group = codec.decode(createRawMessage(xml), reportingContext)
         assertEquals(1, group.messagesCount)
 
-        LOGGER.info("DECODE_RESULT: ${TextFormat.shortDebugString(group)}")
+        LOGGER.info { "DECODE_RESULT: ${TextFormat.shortDebugString(group)}" }
 
         assertEqualsMessages(message.build(), group.messagesList[0].message, true)
     }
 
-    init {
-        codec = XmlPipelineCodec(XmlPipelineCodecSettings(pathToType))
-    }
-
     protected fun encodeFileToBase64Binary(fileName: String): ByteArray {
-        val file = File(fileName)
-        return Base64.getEncoder().encode(FileUtils.readFileToByteArray(file))
+        return Base64.getEncoder().encode(FileUtils.readFileToByteArray(File(fileName)))
     }
 
     companion object {
-        private val LOGGER: Logger = KotlinLogging.logger { }
+        private val LOGGER = KotlinLogging.logger { }
     }
 }
