@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2023 Exactpro (Exactpro Systems Limited)
+ * Copyright 2021-2024 Exactpro (Exactpro Systems Limited)
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,7 +19,7 @@ import com.exactpro.th2.codec.api.IPipelineCodec
 import com.exactpro.th2.codec.api.IPipelineCodecContext
 import com.exactpro.th2.codec.api.IPipelineCodecFactory
 import com.exactpro.th2.codec.api.IPipelineCodecSettings
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import java.io.InputStream
 import com.google.auto.service.AutoService
 import java.util.concurrent.locks.ReentrantLock
@@ -29,7 +29,7 @@ import kotlin.concurrent.withLock
 class XmlPipelineCodecFactory : IPipelineCodecFactory {
     override val settingsClass: Class<out IPipelineCodecSettings> = XmlPipelineCodecSettings::class.java
     override val protocols: Set<String>
-        get() = setOf(PROTOCOL)
+        get() = PROTOCOLS
     private lateinit var context: IPipelineCodecContext
     private val lock = ReentrantLock()
     @Volatile
@@ -62,5 +62,6 @@ class XmlPipelineCodecFactory : IPipelineCodecFactory {
     companion object {
         private val LOGGER = KotlinLogging.logger { }
         const val PROTOCOL = "XML"
+        private val PROTOCOLS = setOf(PROTOCOL)
     }
 }

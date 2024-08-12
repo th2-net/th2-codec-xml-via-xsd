@@ -1,4 +1,4 @@
-# Codec Xml via Xsd (2.2.0)
+# Codec Xml via Xsd (2.3.0)
 ![version](https://img.shields.io/badge/version-0.0.4-blue.svg)
 
 # How it works:
@@ -141,6 +141,14 @@ spec:
 ```
 
 ## Changelog
+
+### v2.3.0
+
+* Migrated to th2 gradle plugin `0.1.1` (bom: `4.6.1`)
+* Updated common: `5.14.0-dev`
+* Updated common-utils `2.2.3-dev`
+* Updated codec `5.5.0-dev`
+* Updated workflows
 
 ### v2.2.0
 

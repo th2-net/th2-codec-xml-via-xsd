@@ -1,55 +1,15 @@
-/*
- * Copyright 2021-2023 Exactpro (Exactpro Systems Limited)
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-import com.github.jk1.license.filter.LicenseBundleNormalizer
-import com.github.jk1.license.render.JsonReportRenderer
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
 plugins {
-    id "com.palantir.docker" version "0.25.0"
     id "org.jetbrains.kotlin.jvm" version "$kotlin_version"
     id "org.jetbrains.kotlin.kapt" version "$kotlin_version"
     id "application"
-    id "org.owasp.dependencycheck" version "8.4.0"
-    id "com.gorylenko.gradle-git-properties" version "2.4.1"
-    id "com.github.jk1.dependency-license-report" version "2.5"
-    id "de.undercouch.download" version "5.5.0"
-}
-
-ext {
-    sharedDir = file("${project.rootDir}/shared")
+    id "com.exactpro.th2.gradle.component" version "0.1.1"
 }
 
 group = 'com.exactpro.th2'
 version = release_version
 
-sourceCompatibility = JavaVersion.VERSION_11
-targetCompatibility = JavaVersion.VERSION_11
-
-ext {
-    junitVersion        = '5.10.0'
-}
-
 repositories {
     maven {
-        name 'MavenLocal'
-        url sharedDir
-    }
-
-    maven {
         name 'Sonatype_snapshots'
         url 'https://s01.oss.sonatype.org/content/repositories/snapshots/'
     }
@@ -62,10 +22,12 @@ repositories {
             artifact()
         }
     }
+
     maven {
         name 'Sonatype_releases'
         url 'https://s01.oss.sonatype.org/content/repositories/releases/'
     }
+
     maven {
         name 'Sonatype_releases'
         url 'https://s01.oss.sonatype.org/content/repositories/releases/'
@@ -74,6 +36,7 @@ repositories {
             artifact()
         }
     }
+
     mavenCentral()
     mavenLocal()
 
@@ -83,100 +46,27 @@ repositories {
     }
 }
 
-jar {
-    manifest {
-        attributes(
-                'Created-By':               "${System.getProperty('java.version')} (${System.getProperty('java.vendor')})",
-                'Specification-Title':      '',
-                'Specification-Vendor':     'Exactpro Systems LLC',
-                'Implementation-Title':     project.archivesBaseName,
-                'Implementation-Vendor':    'Exactpro Systems LLC',
-                'Implementation-Vendor-Id': 'com.exactpro',
-                'Implementation-Version':   project.version
-        )
-    }
-}
-
 dependencies {
-    api platform("com.exactpro.th2:bom:4.5.0")
-    implementation "com.exactpro.th2:common:5.4.0-dev"
-    implementation "com.exactpro.th2:codec:5.3.0-dev"
-    implementation "com.exactpro.th2:common-utils:2.2.0-dev"
+    implementation "com.exactpro.th2:common:5.14.0-dev"
+    implementation "com.exactpro.th2:common-utils:2.2.3-dev"
+    implementation "com.exactpro.th2:codec:5.5.0-dev"
 
     implementation "org.slf4j:slf4j-api"
-    implementation "io.github.microutils:kotlin-logging:3.0.5"
-
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
-    implementation "org.jetbrains.kotlin:kotlin-reflect"
+    implementation "io.github.oshai:kotlin-logging:5.1.4"
 
     implementation "com.fasterxml.jackson.core:jackson-core"
-    implementation "com.github.javadev:underscore:1.93"
+    implementation "com.github.javadev:underscore:1.104"
     implementation "commons-io:commons-io"
 
-    implementation group: 'org.apache.ws.xmlschema', name: 'xmlschema-core', version: '2.3.0'
-
-    testImplementation "org.jetbrains.kotlin:kotlin-test-junit5:$kotlin_version"
+    implementation "org.apache.ws.xmlschema:xmlschema-core:2.3.1"
 
     compileOnly "com.google.auto.service:auto-service:1.1.1"
     annotationProcessor "com.google.auto.service:auto-service:1.1.1"
     kapt "com.google.auto.service:auto-service:1.1.1"
+
+    testImplementation "org.jetbrains.kotlin:kotlin-test-junit5"
 }
 
-application {
-    mainClassName 'com.exactpro.th2.codec.MainKt'
-}
-
-applicationName = 'service'
-
-dockerPrepare {
-    dependsOn distTar
-}
-
-docker {
-    copySpec.from(tarTree("$buildDir/distributions/${applicationName}.tar"))
-}
-
-sourceSets {
-    main.kotlin.srcDirs += "src/main/kotlin"
-}
-
-tasks.withType(KotlinCompile).configureEach {
-    compilerOptions.jvmTarget.set(JvmTarget.JVM_11)
-}
-
-clean {
-    delete sharedDir
-}
-
-dependencyCheck {
-    formats = ['SARIF', 'JSON', 'HTML']
-    failBuildOnCVSS = 5
-    suppressionFile = file('suppressions.xml')
-    analyzers {
-        assemblyEnabled = false
-        nugetconfEnabled = false
-        nodeEnabled = false
-    }
-}
-
-licenseReport {
-    def licenseNormalizerBundlePath = "$buildDir/license-normalizer-bundle.json"
-
-    if (!file(licenseNormalizerBundlePath).exists()) {
-        download.run {
-            src 'https://raw.githubusercontent.com/th2-net/.github/main/license-compliance/gradle-license-report/license-normalizer-bundle.json'
-            dest "$buildDir/license-normalizer-bundle.json"
-            overwrite false
-        }
-    }
-
-    filters = [new LicenseBundleNormalizer(licenseNormalizerBundlePath, false)]
-    renderers = [new JsonReportRenderer('licenses.json', false)]
-    excludeOwnGroup = false
-    allowedLicensesFile = new URL("https://raw.githubusercontent.com/th2-net/.github/main/license-compliance/gradle-license-report/allowed-licenses.json")
-}
-
-test {
-    useJUnitPlatform()
-    //exclude 'com/exactpro/th2/codec/xml'
-}
+test.useJUnitPlatform()
+application.mainClass = "com.exactpro.th2.codec.MainKt"
+dependencyCheck.suppressionFile = file('suppressions.xml')

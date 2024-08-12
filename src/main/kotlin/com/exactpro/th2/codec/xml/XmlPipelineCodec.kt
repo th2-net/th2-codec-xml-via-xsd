@@ -1,5 +1,5 @@
 /*
- * Copyright 2021-2023 Exactpro (Exactpro Systems Limited)
+ * Copyright 2021-2024 Exactpro (Exactpro Systems Limited)
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -37,13 +37,12 @@ import com.exactpro.th2.common.utils.message.transport.getField
 import com.github.underscore.Xml
 import com.google.protobuf.UnsafeByteOperations
 import io.netty.buffer.Unpooled
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import java.io.InputStream
 import java.nio.charset.Charset
 import java.util.Locale
 
 open class XmlPipelineCodec(settings: XmlPipelineCodecSettings, xsdMap: Map<String, () -> InputStream> = emptyMap())  : IPipelineCodec {
-
     private val pointer: List<String> = settings.typePointer
         ?.split("/")?.filter(String::isNotBlank)
         ?: listOf()
@@ -214,6 +213,5 @@ open class XmlPipelineCodec(settings: XmlPipelineCodecSettings, xsdMap: Map<Stri
 
     companion object {
         private val LOGGER = KotlinLogging.logger {}
-
     }
 }
