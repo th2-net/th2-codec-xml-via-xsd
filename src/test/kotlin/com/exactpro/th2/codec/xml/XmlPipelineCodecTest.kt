@@ -82,9 +82,8 @@ class XmlPipelineCodecTest : XmlTest() {
     }
 
     @Test
-    fun `test validation of xml declaration`() {
-        val withoutValidationCodec = XmlPipelineCodec(XmlPipelineCodecSettings(expectsDeclaration = false), mapOf())
-        val withValidationCodec = XmlPipelineCodec(XmlPipelineCodecSettings(expectsDeclaration = true), mapOf())
+    fun `test xml declaration`() {
+        val withoutValidationCodec = XmlPipelineCodec(XmlPipelineCodecSettings(), mapOf())
 
         // Message with XML declaration
         var xml: MessageGroup = createMessageGroup("""<?xml version="1.0" encoding="UTF-8" standalone="no"?>
@@ -93,8 +92,7 @@ class XmlPipelineCodecTest : XmlTest() {
             </Msg>
             """.trimIndent())
 
-        Assertions.assertDoesNotThrow { withoutValidationCodec.decode(xml) }
-        Assertions.assertDoesNotThrow { withValidationCodec.decode(xml) }
+        Assertions.assertDoesNotThrow { withoutValidationCodec.decode(xml, reportingContext) }
 
         // Formatted message with XML declaration
         xml = createMessageGroup("""
@@ -103,13 +101,12 @@ class XmlPipelineCodecTest : XmlTest() {
             </Msg>
             """.trimIndent())
 
-        Assertions.assertDoesNotThrow { withoutValidationCodec.decode(xml) }
-        Assertions.assertThrows(IllegalStateException::class.java) { withValidationCodec.decode(xml) }
+        Assertions.assertDoesNotThrow { withoutValidationCodec.decode(xml, reportingContext) }
     }
 
     @Test
-    fun `test validation of xml with few root elements`() {
-        val withoutValidationCodec = XmlPipelineCodec(XmlPipelineCodecSettings(expectsDeclaration = false), mapOf())
+    fun `test xml with few root elements`() {
+        val withoutValidationCodec = XmlPipelineCodec(XmlPipelineCodecSettings())
 
         val xml = createMessageGroup("""<?xml version="1.0" encoding="iso-8859-1" standalone="yes"?>
             <Msg>
@@ -121,7 +118,7 @@ class XmlPipelineCodecTest : XmlTest() {
             """.trimIndent())
 
         Assertions.assertThrows(IllegalStateException::class.java) {
-            withoutValidationCodec.decode(xml)
+            withoutValidationCodec.decode(xml, reportingContext)
         }
     }
 

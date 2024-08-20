@@ -1,4 +1,4 @@
-# Codec Xml via Xsd
+# Codec Xml via Xsd (2.3.0)
 ![version](https://img.shields.io/badge/version-0.0.4-blue.svg)
 
 # How it works:
@@ -58,12 +58,13 @@ Error from validation process can be disabled for test purposes by `dirtyValidat
 
 * typePointer - Path to message type value for decode (null by default)
 * dirtyValidation - Disable/enable error during validation phase. If disabled all errors will be only visible in log  (false by default)
-* expectsDeclaration - Disable/enable validation of declaration - is it exist or not (true by default)
+* schemas - mapping between schema location value and a dictionary alias that should be used to load this schema
 
 ```yaml
 typePointer: /root/node/node2/type
 dirtyValidation: false
-expectsDeclaration: false
+schemas:
+  "test.xsd": "${dictionary_link:dict-xml}"
 ```
 
 For example:
@@ -77,7 +78,6 @@ spec:
   custom-config:
     codecSettings:
       typePointer: /root/node/node2/type
-      dirtyValidation: false
 ```
 
 ## Required pins
@@ -141,6 +141,30 @@ spec:
 ```
 
 ## Changelog
+
+### v2.3.0
+
+* Migrated to th2 gradle plugin `0.1.1` (bom: `4.6.1`)
+* Updated common: `5.14.0-dev`
+* Updated common-utils `2.2.3-dev`
+* Updated codec `5.5.0-dev`
+* Updated workflows
+
+### v2.2.0
+
+* Migrate to StAX parser
+
+### v2.1.0
+
+* th2 transport protocol support
+
+### v0.0.4
+
+#### Changed:
+* th2-common `3.44.0`
+* th2-bom `4.1.0`
+* kotlin `1.6.21`
+* Dependency check pipeline step
 
 ### v0.0.4
 

@@ -1,133 +1,77 @@
-/*
- * Copyright 2021-2022 Exactpro (Exactpro Systems Limited)
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 plugins {
-    id 'com.palantir.docker' version '0.25.0'
-    id 'org.jetbrains.kotlin.jvm' version "${kotlin_version}"
-    id 'com.github.harbby.gradle.serviceloader' version '1.1.5'
-    id 'application'
-}
-
-ext {
-    sharedDir = file("${project.rootDir}/shared")
-    sailfishVersion = '3.2.1752'
+    id "org.jetbrains.kotlin.jvm" version "$kotlin_version"
+    id "org.jetbrains.kotlin.kapt" version "$kotlin_version"
+    id "application"
+    id "java-library"
+    id "maven-publish"
+    id "com.exactpro.th2.gradle.publish" version "0.1.1"
+    id "com.exactpro.th2.gradle.component" version "0.1.1"
 }
 
 group = 'com.exactpro.th2'
 version = release_version
 
-sourceCompatibility = 11
-targetCompatibility = 11
-
-ext {
-    junitVersion        = '5.8.1'
-}
+kotlin.jvmToolchain(11)
 
 repositories {
-    mavenCentral()
     maven {
         name 'Sonatype_snapshots'
         url 'https://s01.oss.sonatype.org/content/repositories/snapshots/'
     }
+
+    maven {
+        name 'Sonatype_snapshots'
+        url 'https://s01.oss.sonatype.org/content/repositories/snapshots/'
+        metadataSources {
+            mavenPom()
+            artifact()
+        }
+    }
+
     maven {
         name 'Sonatype_releases'
         url 'https://s01.oss.sonatype.org/content/repositories/releases/'
     }
 
-    configurations.all {
+    maven {
+        name 'Sonatype_releases'
+        url 'https://s01.oss.sonatype.org/content/repositories/releases/'
+        metadataSources {
+            mavenPom()
+            artifact()
+        }
+    }
+
+    mavenCentral()
+    mavenLocal()
+
+    configurations.configureEach {
         resolutionStrategy.cacheChangingModulesFor 0, 'seconds'
         resolutionStrategy.cacheDynamicVersionsFor 0, 'seconds'
     }
 }
 
-jar {
-    manifest {
-        attributes(
-                'Created-By':               "${System.getProperty('java.version')} (${System.getProperty('java.vendor')})",
-                'Specification-Title':      '',
-                'Specification-Vendor':     'Exactpro Systems LLC',
-                'Implementation-Title':     project.archivesBaseName,
-                'Implementation-Vendor':    'Exactpro Systems LLC',
-                'Implementation-Vendor-Id': 'com.exactpro',
-                'Implementation-Version':   project.version
-        )
-    }
-}
-
 dependencies {
-    api platform('com.exactpro.th2:bom:3.1.0')
-    implementation 'com.exactpro.th2:common:3.31.5'
-    implementation 'com.exactpro.th2:codec:4.7.2'
-    implementation 'com.exactpro.th2:sailfish-utils:3.12.3'
+    implementation "com.exactpro.th2:common:5.14.0-dev"
+    implementation "com.exactpro.th2:common-utils:2.2.3-dev"
+    implementation "com.exactpro.th2:codec:5.5.0-dev"
 
-    implementation "com.exactpro.sf:sailfish-core:${sailfishVersion}"
+    implementation "org.slf4j:slf4j-api"
+    implementation "io.github.oshai:kotlin-logging:5.1.4"
 
-    implementation 'org.slf4j:slf4j-log4j12'
-    implementation 'org.slf4j:slf4j-api'
+    implementation "com.fasterxml.jackson.core:jackson-core"
+    implementation "com.github.javadev:underscore:1.104"
+    implementation "commons-io:commons-io"
 
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlin_version}"
-    implementation "org.jetbrains.kotlin:kotlin-reflect:${kotlin_version}"
+    implementation "org.apache.ws.xmlschema:xmlschema-core:2.3.1"
 
-    implementation 'com.fasterxml.jackson.core:jackson-core:2.13.1'
-    implementation 'com.github.javadev:underscore:1.69'
-    
-    testImplementation "org.jetbrains.kotlin:kotlin-test-junit5:${kotlin_version}"
-    testImplementation "org.junit.jupiter:junit-jupiter-api:${junitVersion}"
-    testImplementation "org.junit.jupiter:junit-jupiter-params:${junitVersion}"
-    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitVersion}"
+    compileOnly "com.google.auto.service:auto-service:1.1.1"
+    annotationProcessor "com.google.auto.service:auto-service:1.1.1"
+    kapt "com.google.auto.service:auto-service:1.1.1"
+
+    testImplementation "org.jetbrains.kotlin:kotlin-test-junit5"
 }
 
-application {
-    mainClassName 'com.exactpro.th2.codec.MainKt'
-}
-
-applicationName = 'service'
-
-dockerPrepare {
-    dependsOn distTar
-}
-
-docker {
-    copySpec.from(tarTree("$buildDir/distributions/${applicationName}.tar"))
-}
-
-sourceSets {
-    main.kotlin.srcDirs += "src/main/kotlin"
-}
-
-compileKotlin {
-    kotlinOptions {
-        jvmTarget = "11"
-    }
-}
-
-compileTestKotlin {
-    kotlinOptions {
-        jvmTarget = "11"
-    }
-}
-
-clean {
-    delete sharedDir
-}
-
-serviceLoader {
-    serviceInterface 'com.exactpro.th2.codec.api.IPipelineCodecFactory'
-}
-
-test {
-    useJUnitPlatform()
-    //exclude 'com/exactpro/th2/codec/xml'
-}
+test.useJUnitPlatform()
+application.mainClass = "com.exactpro.th2.codec.MainKt"
+dependencyCheck.suppressionFile = file('suppressions.xml')
