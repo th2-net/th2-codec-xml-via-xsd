@@ -1,4 +1,4 @@
-# Codec Xml via Xsd (2.3.0)
+# Codec Xml via Xsd (2.4.0)
 ![version](https://img.shields.io/badge/version-0.0.4-blue.svg)
 
 # How it works:
@@ -141,6 +141,14 @@ spec:
 ```
 
 ## Changelog
+
+### v2.4.0
+
+* Codec decodes each raw message with `XML` (ignore case) or empty protocol
+* Updated:
+  * th2 gradle plugin `0.1.3` (bom: `4.8.0`)
+  * common-utils: `2.3.0-dev`
+  * underscore: `1.106`
 
 ### v2.3.0
 

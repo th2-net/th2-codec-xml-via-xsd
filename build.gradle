@@ -4,8 +4,8 @@ plugins {
     id "application"
     id "java-library"
     id "maven-publish"
-    id "com.exactpro.th2.gradle.publish" version "0.1.1"
-    id "com.exactpro.th2.gradle.component" version "0.1.1"
+    id "com.exactpro.th2.gradle.publish" version "0.1.3"
+    id "com.exactpro.th2.gradle.component" version "0.1.3"
 }
 
 group = 'com.exactpro.th2'
@@ -20,26 +20,8 @@ repositories {
     }
 
     maven {
-        name 'Sonatype_snapshots'
-        url 'https://s01.oss.sonatype.org/content/repositories/snapshots/'
-        metadataSources {
-            mavenPom()
-            artifact()
-        }
-    }
-
-    maven {
         name 'Sonatype_releases'
         url 'https://s01.oss.sonatype.org/content/repositories/releases/'
-    }
-
-    maven {
-        name 'Sonatype_releases'
-        url 'https://s01.oss.sonatype.org/content/repositories/releases/'
-        metadataSources {
-            mavenPom()
-            artifact()
-        }
     }
 
     mavenCentral()
@@ -53,14 +35,14 @@ repositories {
 
 dependencies {
     implementation "com.exactpro.th2:common:5.14.0-dev"
-    implementation "com.exactpro.th2:common-utils:2.2.3-dev"
+    implementation "com.exactpro.th2:common-utils:2.3.0-dev"
     implementation "com.exactpro.th2:codec:5.5.0-dev"
 
     implementation "org.slf4j:slf4j-api"
     implementation "io.github.oshai:kotlin-logging:5.1.4"
 
     implementation "com.fasterxml.jackson.core:jackson-core"
-    implementation "com.github.javadev:underscore:1.104"
+    implementation "com.github.javadev:underscore:1.106"
     implementation "commons-io:commons-io"
 
     implementation "org.apache.ws.xmlschema:xmlschema-core:2.3.1"
