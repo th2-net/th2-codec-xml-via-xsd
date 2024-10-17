@@ -81,7 +81,7 @@ open class XmlPipelineCodec(settings: XmlPipelineCodecSettings, xsdMap: Map<Stri
 
     //FIXME: move this check into the codec-core project
     private fun checkProtocol(msgProtocol: String?): Boolean {
-        return msgProtocol.isNullOrEmpty() || msgProtocol == XmlPipelineCodecFactory.PROTOCOL
+        return msgProtocol.isNullOrEmpty() || XmlPipelineCodecFactory.PROTOCOL.equals(msgProtocol, true)
     }
 
     private fun encodeOne(message: ProtoMessage): ProtoRawMessage {
