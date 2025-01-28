@@ -142,6 +142,10 @@ spec:
 
 ## Changelog
 
+### Unreleased
+
+* Update th2 gradle plugins: `0.1.3` -> `0.1.8`
+
 ### v2.4.0
 
 * Codec decodes each raw message with `XML` (ignore case) or empty protocol
