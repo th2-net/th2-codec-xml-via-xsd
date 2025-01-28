@@ -1,4 +1,4 @@
-# Codec Xml via Xsd (2.4.0)
+# Codec Xml via Xsd (2.4.1)
 ![version](https://img.shields.io/badge/version-0.0.4-blue.svg)
 
 # How it works:
@@ -142,9 +142,10 @@ spec:
 
 ## Changelog
 
-### Unreleased
+### v2.4.1
 
 * Update th2 gradle plugins: `0.1.3` -> `0.1.8`
+* Correctly handle empty XML namespaces `xmlns=""` inside tag
 
 ### v2.4.0
 
