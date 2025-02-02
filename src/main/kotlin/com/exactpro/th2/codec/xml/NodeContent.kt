@@ -50,12 +50,12 @@ class NodeContent<T>(
         decorator.namespaceCount.let { size ->
             if (size > 0) {
                 for (i in 0 until size) {
-                    decorator.getNamespaceURI(i).also { value ->
-                        val prefix = decorator.namespaceContext.getPrefix(value)
+                    // value can be null (e.g. xmlns="")
+                    val value: String = decorator.getNamespaceURI(i) ?: ""
+                    val prefix = decorator.namespaceContext.getPrefix(value) ?: ""
 
-                        with(appender) {
-                            messageBuilder.appendSimple(makeFieldName(NAMESPACE, prefix, true), value)
-                        }
+                    with(appender) {
+                        messageBuilder.appendSimple(makeFieldName(NAMESPACE, prefix, true), value)
                     }
                 }
                 isMessage = true
